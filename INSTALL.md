@@ -15,6 +15,31 @@ Nothing conflicts and nothing errors, which is what makes it dangerous. The kit'
 
 The kit itself is location-independent: `tools/agentic_planning_v3.py` resolves its schemas relative to its own path and takes the workspace separately through `--root`. The only hard requirement is that `tools/` and `schemas/` stay together.
 
+## Where to install: the workspace, not the project
+
+Install the kit once over the **workspace** — the root holding every internal project of one solution — not once per project. The kit's value comes from planning across projects: cross-project features, honest resource claims, correct regression scope and declared ordering between a migration and the code that depends on it. See the workspace rationale in [`README.md`](./README.md#workspaces).
+
+| Topology | Install target | `--root` | CI |
+|---|---|---|---|
+| Single repository, projects as directories | Workspace root | `.` (covers every project) | One workflow, one checkout |
+| Workspace root with independent repositories | The coordinator repository that owns `.agentic_planning/` | The coordinator repository | Each repository's workflow needs the kit — vendor it in the coordinator and check that out as a second step, or use the out-of-repo install below |
+
+Concretely, for a workspace holding a `database/`, an `api/`, a `backend/` and a `frontend/` as separate projects inside a single repository:
+
+```text
+<workspace>/                <- git init here, install the kit here
+├── .agentic_planning/
+├── agentic-planning-kit/
+├── database/
+├── api/
+├── backend/
+└── frontend/
+```
+
+Each project keeps its own build, tests and deployment; the workspace only adds the shared planning tree above them. In the multi-repository topology the layout is the same, except each project directory is its own Git repository and the kit is installed in the coordinator that owns `.agentic_planning/`.
+
+**One kit per workspace.** A second copy — `agentic-planning-kit2/`, a per-project copy, a stale vendored snapshot next to a fresh one — means two control planes with undefined precedence: prompts resolve to whichever path the trigger names, CI runs whichever `KIT_PATH` says, and the two drift apart silently. Use `git subtree pull` to move one installation forward instead of adding a second directory.
+
 ## Quick install
 
 Two equivalent installers ship with the kit. Run either from the kit directory, with the consumer repository already initialized.
@@ -22,13 +47,13 @@ Two equivalent installers ship with the kit. Run either from the kit directory, 
 Windows:
 
 ```powershell
-.\tools\install_kit.ps1 -Workspace C:\path\to\proyectox_workspace -CodeownersOwner "@your-org/your-team"
+.\tools\install_kit.ps1 -Workspace C:\path\to\my_workspace -CodeownersOwner "@your-org/your-team"
 ```
 
 macOS and Linux:
 
 ```bash
-./tools/install_kit.sh --workspace ~/src/proyectox_workspace --codeowners-owner "@your-org/your-team"
+./tools/install_kit.sh --workspace ~/src/my_workspace --codeowners-owner "@your-org/your-team"
 ```
 
 Preview every change first with `-DryRun` / `--dry-run`. Neither script ever pushes.
@@ -64,9 +89,9 @@ Keep the default prefix. `TRIGGERS.md` and the prompts reference `agentic-planni
 Items 2–4 are written inside idempotent managed blocks:
 
 ```text
-# >>> agentic-planning-v3 (managed by install_kit.ps1) >>>
+# >>> agentic-planning-v3 (managed by install_kit) >>>
 ...
-# <<< agentic-planning-v3 (managed by install_kit.ps1) <<<
+# <<< agentic-planning-v3 (managed by install_kit) <<<
 ```
 
 Re-running with `-RefreshOnly` / `--refresh-only` rewrites the block in place instead of appending a duplicate. Everything outside the markers is yours and is never touched. A file carrying a managed block is rewritten with LF endings throughout, matching the kit's `.gitattributes` rules — expect that one-time normalization if the consumer repository stored those files with CRLF.
@@ -107,7 +132,7 @@ Install the kit anywhere and invoke it with `--root` pointing at the workspace:
 python /opt/agentic-planning-kit/tools/agentic_planning_v3.py validate --root .
 ```
 
-Keeps the product repository clean and lets several projects share one kit, but CI needs a second checkout step, and reproducibility depends on you pinning a ref yourself. This is the sensible choice for a multi-repository workspace: install once, and let the coordinator repository that owns `.agentic_planning/` point every repository at it.
+Keeps the product repository clean and lets several repositories share one kit, but CI needs a second checkout step, and reproducibility depends on you pinning a ref yourself. This is the sensible choice for a **multi-repository workspace**: install once, and let every repository's CI reach the same kit while the coordinator repository that owns `.agentic_planning/` remains the single planning tree. It is the wrong choice for a single-repository workspace, where vendoring costs nothing and removes a moving part.
 
 After a manual install, merge the fragments yourself — or run either installer with `-RefreshOnly` / `--refresh-only` to generate them.
 
@@ -131,11 +156,11 @@ git subtree pull --prefix agentic-planning-kit planning-kit main --squash
 Then refresh the generated blocks in case the templates changed:
 
 ```powershell
-.\tools\install_kit.ps1 -Workspace C:\path\to\proyectox_workspace -RefreshOnly
+.\tools\install_kit.ps1 -Workspace C:\path\to\my_workspace -RefreshOnly
 ```
 
 ```bash
-./tools/install_kit.sh --workspace ~/src/proyectox_workspace --refresh-only
+./tools/install_kit.sh --workspace ~/src/my_workspace --refresh-only
 ```
 
 Treat a kit upgrade as an integration-lane change: it moves the rules that judge everyone's work. Land it on its own, with the gates green, before merging feature work on top of it.

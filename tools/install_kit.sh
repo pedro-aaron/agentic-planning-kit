@@ -70,8 +70,8 @@ Usage: install_kit.sh --workspace PATH [options]
   -h, --help              Show this help
 
 Examples:
-  ./install_kit.sh --workspace ~/src/proyectox_workspace --dry-run
-  ./install_kit.sh --workspace ~/src/proyectox_workspace --codeowners-owner @acme/platform
+  ./install_kit.sh --workspace ~/src/my_workspace --dry-run
+  ./install_kit.sh --workspace ~/src/my_workspace --codeowners-owner @acme/platform
 USAGE
 }
 

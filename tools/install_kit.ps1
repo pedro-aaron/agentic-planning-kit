@@ -34,10 +34,10 @@
     Use it after a 'git subtree pull' to pick up changed template fragments.
 
 .EXAMPLE
-    .\install_kit.ps1 -Workspace C:\Users\Pepo\Documents\peppo\proyectox_workspace
+    .\install_kit.ps1 -Workspace C:\src\my_workspace
 
 .EXAMPLE
-    .\install_kit.ps1 -Workspace ..\proyectox_workspace -DryRun
+    .\install_kit.ps1 -Workspace ..\my_workspace -DryRun
 #>
 [CmdletBinding()]
 param(

@@ -2,6 +2,8 @@
 
 A portable, stack-agnostic kit for planning and executing agent work safely when several people use the same repositories through Git.
 
+It is installed over a **workspace** — the root holding every internal project of one solution — so that a feature spanning a migration, an API, a backend and a frontend is planned, claimed, executed and accepted as one unit. See [Workspaces](#workspaces).
+
 V3 keeps v2's strongest guarantees — binding feature contracts, explicit dependency graphs, deterministic quality gates, immutable test expectations and human acceptance QA — and changes the collaboration model:
 
 > **Many writers create immutable, identity-owned sources. One protected integration writer regenerates global projections.**
@@ -157,11 +159,44 @@ For a new brownfield v3 workspace, run route 1 through the protected integration
 
 Greenfield file locks are local crash/double-run protection only. Cross-clone authority comes from registered claims and the serialized integration lane.
 
-## Multi-repository workspaces
+## Workspaces
 
-When the root contains independent Git repositories, one configured coordinator repository must own `.agentic_planning/` and global projections. Manifests pin the planning base for every touched repository, and reconciliation receipts bind every validated integration commit. Completion is projected only after all repositories are integrated; a partial integration is `PARTIALLY_MERGED`/`BLOCKED`, never `COMPLETED`.
+The kit is meant to be installed once over a **workspace**: the root holding every internal project that makes up one solution, plus the single planning tree that spans them. Installing it per project is possible, but it gives up most of what the kit is for.
+
+```text
+<workspace>/
+├── .agentic_planning/          # one planning tree for the whole solution
+├── agentic-planning-kit/       # one vendored control plane
+├── WORKSPACE_MAP.md            # generated; spans every project
+├── CLAUDE.md / AGENTS.md       # managed pointer blocks
+├── database/                   # separate projects of one solution;
+├── api/                        # each may or may not be its own
+├── backend/                    # Git repository
+└── frontend/
+```
+
+Each of those directories is a separate project with its own lifecycle, build and deployment. Whether they are directories inside one Git repository or independent repositories is a topology decision covered below — either way they form one workspace.
+
+Separate projects are independently deployable, but they are not independent in behavior. That gap is exactly what a workspace closes:
+
+- **A feature is frequently one capability spread across several projects.** A single change lands as a database migration, an API endpoint, backend logic and a frontend view. Planned project by project it becomes several disconnected plans with no shared contract, no declared ordering and no single definition of done. Planned at workspace level it is one feature with one binding contract, explicit inter-project dependencies and one acceptance.
+- **Claims only detect the collisions the planner can see.** Two features touching the same API contract from different projects collide only if both are registered in the same planning tree. Split the tree and the conflict is discovered at merge time, or in production.
+- **Regression scope is a workspace fact, not a project fact.** A change inside the API can break the frontend's suite. Only a map covering every project can tell an executor which gates actually apply to a given change.
+- **Ordering is cross-project.** The migration must land before the code that depends on it. That sequencing can only be declared where both sides are registered.
+- **Analyses and evidence stay reusable.** Route 4 evidence gathered once about how the projects interact serves every later feature, instead of being rediscovered per repository.
+
+### Workspace topologies
+
+| Topology | Layout | Consequence |
+|---|---|---|
+| Single repository | One Git repository at the workspace root; projects are directories inside it | Strongest guarantees. One `main`, one merge queue, and a cross-project change is one atomic commit that CI validates as a unit |
+| Multi-repository | Workspace root containing independent Git repositories | One configured coordinator repository owns `.agentic_planning/` and global projections. Manifests pin the planning base of every touched repository and receipts bind every validated integration commit |
+
+Prefer the single-repository topology when the projects genuinely ship together: Git already gives cross-project atomicity there, at no cost. The multi-repository topology buys that atomicity back with process, and only partially — completion is projected only after every repository is integrated, and a partial integration is `PARTIALLY_MERGED`/`BLOCKED`, never `COMPLETED`.
 
 The kit never pretends Git provides an atomic transaction across repositories.
+
+Installation placement for each topology is covered in [`INSTALL.md`](./INSTALL.md).
 
 ## Migration and compatibility
 
