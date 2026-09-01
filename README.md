@@ -19,8 +19,9 @@ Feature branches never edit `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, t
 | 4 | [`PROMPT_ANALYZE_BEFORE_DEVELOP.md`](./PROMPT_ANALYZE_BEFORE_DEVELOP.md) | Produce an evidence-backed analysis | One globally identified analysis tree |
 | 5 | [`PROMPT_RECONCILE_MAIN.md`](./PROMPT_RECONCILE_MAIN.md) | Validate integration and regenerate global state | Protected catalog, map, index, mirrors and managed blocks |
 | CLI | [`tools/agentic_planning_v3.py`](./tools/agentic_planning_v3.py) | Validate artifacts/claims and deterministically render projections | Read-only by default; explicit `--write` for integration |
+| Setup | [`tools/install_kit.ps1`](./tools/install_kit.ps1) | Vendor the kit into a consumer repository and merge its Git fragments | Consumer repository; never pushes |
 
-Copy-paste launchers live in [`TRIGGERS.md`](./TRIGGERS.md). The normative data and Git rules live in [`CONTRACT_V3.md`](./CONTRACT_V3.md) and [`GIT_POLICY.md`](./GIT_POLICY.md).
+Copy-paste launchers live in [`TRIGGERS.md`](./TRIGGERS.md). The normative data and Git rules live in [`CONTRACT_V3.md`](./CONTRACT_V3.md) and [`GIT_POLICY.md`](./GIT_POLICY.md). [`INSTALL.md`](./INSTALL.md) covers getting the kit into a consumer repository without nesting one Git repository inside another.
 
 ## Canonical layout in a consumer workspace
 
@@ -177,6 +178,7 @@ The kit never pretends Git provides an atomic transaction across repositories.
 ```text
 agentic-planning-kit/
 ├── README.md
+├── INSTALL.md
 ├── CONTRACT_V3.md
 ├── GIT_POLICY.md
 ├── PROMPT_MIGRATE_V2_TO_V3.md
@@ -188,8 +190,9 @@ agentic-planning-kit/
 ├── TRIGGERS.md
 ├── schemas/
 ├── tools/agentic_planning_v3.py
+├── tools/install_kit.ps1
 ├── tests/
 └── templates/
 ```
 
-This repository contains the kit only. Consumer migrations and product changes occur only when an operator copies the kit into a target workspace and invokes the corresponding prompt.
+This repository contains the kit only. Consumer migrations and product changes occur only when an operator installs the kit into a target workspace — see [`INSTALL.md`](./INSTALL.md) — and invokes the corresponding prompt.
