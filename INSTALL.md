@@ -17,26 +17,37 @@ The kit itself is location-independent: `tools/agentic_planning_v3.py` resolves 
 
 ## Quick install
 
-From the kit directory, with the consumer repository already initialized:
+Two equivalent installers ship with the kit. Run either from the kit directory, with the consumer repository already initialized.
+
+Windows:
 
 ```powershell
 .\tools\install_kit.ps1 -Workspace C:\path\to\proyectox_workspace -CodeownersOwner "@your-org/your-team"
 ```
 
-Preview every change first with `-DryRun`. The script never pushes.
+macOS and Linux:
 
-| Parameter | Default | Purpose |
-|---|---|---|
-| `-Workspace` | required | Any path inside the consumer repository |
-| `-Mode` | `subtree` | `subtree` (updatable) or `copy` (detached snapshot) |
-| `-KitSource` | this kit | Kit URL or local path |
-| `-KitRef` | `main` | Branch or tag to vendor |
-| `-Prefix` | `agentic-planning-kit` | Install directory; see the warning below |
-| `-CodeownersOwner` | `@planning-integrators` | Real integrator team |
-| `-RefreshOnly` | off | Regenerate managed blocks without touching the vendored kit |
-| `-SkipCi` / `-SkipCodeowners` | off | Leave those files alone |
-| `-Force` | off | Overwrite an existing workflow or snapshot |
-| `-DryRun` | off | Report intended changes only |
+```bash
+./tools/install_kit.sh --workspace ~/src/proyectox_workspace --codeowners-owner "@your-org/your-team"
+```
+
+Preview every change first with `-DryRun` / `--dry-run`. Neither script ever pushes.
+
+| PowerShell | Bash | Default | Purpose |
+|---|---|---|---|
+| `-Workspace` | `--workspace` | required | Any path inside the consumer repository |
+| `-Mode` | `--mode` | `subtree` | `subtree` (updatable) or `copy` (detached snapshot) |
+| `-KitSource` | `--kit-source` | this kit | Kit URL or local path |
+| `-KitRef` | `--kit-ref` | `main` | Branch or tag to vendor |
+| `-RemoteName` | `--remote-name` | `planning-kit` | Remote name used by subtree mode |
+| `-Prefix` | `--prefix` | `agentic-planning-kit` | Install directory; see the warning below |
+| `-CodeownersOwner` | `--codeowners-owner` | `@planning-integrators` | Real integrator team |
+| `-RefreshOnly` | `--refresh-only` | off | Regenerate managed blocks without touching the vendored kit |
+| `-SkipCi` / `-SkipCodeowners` | `--skip-ci` / `--skip-codeowners` | off | Leave those files alone |
+| `-Force` | `--force` | off | Overwrite an existing workflow or snapshot |
+| `-DryRun` | `--dry-run` | off | Report intended changes only |
+
+Both write byte-identical files, and either one refreshes an installation performed by the other: the managed-block markers say `install_kit`, not the script name. A mixed-platform team can use whichever is at hand.
 
 `subtree` mode requires at least one commit and a clean working tree, and git creates one commit for the vendored kit. The merged fragments are deliberately left uncommitted so you can review them.
 
@@ -58,7 +69,7 @@ Items 2–4 are written inside idempotent managed blocks:
 # <<< agentic-planning-v3 (managed by install_kit.ps1) <<<
 ```
 
-Re-running with `-RefreshOnly` rewrites the block in place instead of appending a duplicate. Everything outside the markers is yours and is never touched.
+Re-running with `-RefreshOnly` / `--refresh-only` rewrites the block in place instead of appending a duplicate. Everything outside the markers is yours and is never touched. A file carrying a managed block is rewritten with LF endings throughout, matching the kit's `.gitattributes` rules — expect that one-time normalization if the consumer repository stored those files with CRLF.
 
 **The fragments must live in the repository root, not in the kit directory.** The kit's own `.gitignore` only applies to its own subtree, so its `!.agentic_planning/**` rules protect nothing from there. The block must also be appended *after* your existing rules, because in `.gitignore` the last matching pattern wins — that is what lets `!.agentic_planning/**` rescue canonical sources from a broad `runs/`, `events/` or `projects/` ignore. Get this wrong and the protected check fails with `PLANNING_SOURCE_IGNORED`.
 
@@ -98,7 +109,7 @@ python /opt/agentic-planning-kit/tools/agentic_planning_v3.py validate --root .
 
 Keeps the product repository clean and lets several projects share one kit, but CI needs a second checkout step, and reproducibility depends on you pinning a ref yourself. This is the sensible choice for a multi-repository workspace: install once, and let the coordinator repository that owns `.agentic_planning/` point every repository at it.
 
-After a manual install, merge the fragments yourself — or run `install_kit.ps1 -RefreshOnly` to generate them.
+After a manual install, merge the fragments yourself — or run either installer with `-RefreshOnly` / `--refresh-only` to generate them.
 
 ## After installing
 
@@ -121,6 +132,10 @@ Then refresh the generated blocks in case the templates changed:
 
 ```powershell
 .\tools\install_kit.ps1 -Workspace C:\path\to\proyectox_workspace -RefreshOnly
+```
+
+```bash
+./tools/install_kit.sh --workspace ~/src/proyectox_workspace --refresh-only
 ```
 
 Treat a kit upgrade as an integration-lane change: it moves the rules that judge everyone's work. Land it on its own, with the gates green, before merging feature work on top of it.
