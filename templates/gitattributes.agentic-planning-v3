@@ -1,0 +1,4 @@
+# Merge into the consumer repository's .gitattributes.
+.agentic_planning/** text eol=lf
+WORKSPACE_MAP.md text eol=lf
+PROJECT_BLUEPRINT.md text eol=lf

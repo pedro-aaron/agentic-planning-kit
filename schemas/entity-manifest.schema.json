@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-planning-kit.local/schemas/entity-manifest.schema.json",
+  "title": "V3 immutable plan revision manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "entity_id",
+    "revision_id",
+    "planning_base",
+    "map_inputs",
+    "write_scopes",
+    "resource_claims",
+    "depends_on",
+    "integration_owner"
+  ],
+  "properties": {
+    "artifact_type": { "const": "entity_manifest" },
+    "schema_version": { "const": 3 },
+    "entity_id": {
+      "type": "string",
+      "pattern": "^(ftr|ana|prj)_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^rev_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "planning_base": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["repository_id", "path", "commit"],
+        "properties": {
+          "repository_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "path": { "type": "string", "minLength": 1 },
+          "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+        }
+      }
+    },
+    "map_inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id", "sha256"],
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "pattern": "^cat_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "write_scopes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["repository_id", "kind", "path"],
+        "properties": {
+          "repository_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "kind": { "enum": ["exact", "tree"] },
+          "path": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "resource_claims": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["resource_id", "mode", "isolation_key", "reason"],
+        "properties": {
+          "resource_id": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "mode": { "enum": ["read", "exclusive", "isolated", "unknown"] },
+          "isolation_key": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      }
+    },
+    "depends_on": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(ftr|ana|prj)_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      }
+    },
+    "integration_owner": { "type": "string", "minLength": 1, "maxLength": 200 }
+  }
+}
+

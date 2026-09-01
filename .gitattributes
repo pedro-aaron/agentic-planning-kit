@@ -1,2 +1,8 @@
-# Auto detect text files and perform LF normalization
+# Deterministic cross-platform planning artifacts.
 * text=auto
+*.md text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.py text eol=lf

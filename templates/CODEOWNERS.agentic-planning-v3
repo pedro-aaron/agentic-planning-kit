@@ -1,0 +1,11 @@
+# Merge this fragment into the consumer repository's .github/CODEOWNERS.
+# Replace @planning-integrators with the real team/account.
+/WORKSPACE_MAP.md                              @planning-integrators
+/PROJECT_BLUEPRINT.md                         @planning-integrators
+/.agentic_planning/CONTRACT.json              @planning-integrators
+/.agentic_planning/README.md                  @planning-integrators
+/.agentic_planning/catalog/                   @planning-integrators
+/.agentic_planning/reconciliations/           @planning-integrators
+/CLAUDE.md                                    @planning-integrators
+/AGENTS.md                                    @planning-integrators
+/.github/workflows/agentic-planning-v3.yml    @planning-integrators

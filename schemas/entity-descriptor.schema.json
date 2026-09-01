@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-planning-kit.local/schemas/entity-descriptor.schema.json",
+  "title": "V3 entity descriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "entity_id",
+    "kind",
+    "slug",
+    "title",
+    "created_at",
+    "owner",
+    "provenance",
+    "initial_revision_id",
+    "source_analysis_ids"
+  ],
+  "properties": {
+    "artifact_type": { "const": "entity_descriptor" },
+    "schema_version": { "const": 3 },
+    "entity_id": {
+      "type": "string",
+      "pattern": "^(ftr|ana|prj)_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "kind": { "enum": ["feature", "analysis", "project"] },
+    "slug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"
+    },
+    "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "owner": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "provenance": { "enum": ["native_v3", "legacy_import"] },
+    "initial_revision_id": {
+      "type": ["string", "null"],
+      "pattern": "^rev_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "source_analysis_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^ana_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      }
+    }
+  }
+}

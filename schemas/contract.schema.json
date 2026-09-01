@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-planning-kit.local/schemas/contract.schema.json",
+  "title": "Agentic Planning Kit v3 contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "contract_version",
+    "writer_contract",
+    "planning_map_contract",
+    "writer_authority",
+    "repo_id",
+    "legacy_mode",
+    "canonical_root",
+    "catalog_path",
+    "generated_views",
+    "root_project_id",
+    "managed_entry_points",
+    "protected_paths"
+  ],
+  "properties": {
+    "artifact_type": { "const": "contract" },
+    "contract_version": { "const": 3 },
+    "writer_contract": { "const": "v3" },
+    "planning_map_contract": { "const": 4 },
+    "writer_authority": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "repo_id": {
+      "type": "string",
+      "pattern": "^repo_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "legacy_mode": { "const": "read_only" },
+    "canonical_root": { "const": ".agentic_planning" },
+    "catalog_path": { "const": ".agentic_planning/catalog" },
+    "generated_views": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "workspace_map"],
+      "properties": {
+        "index": { "const": ".agentic_planning/README.md" },
+        "workspace_map": { "const": "WORKSPACE_MAP.md" }
+      }
+    },
+    "root_project_id": {
+      "type": ["string", "null"],
+      "pattern": "^prj_[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "managed_entry_points": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "protected_paths": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

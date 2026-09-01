@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+!.agentic_planning/
+!.agentic_planning/**/
+!.agentic_planning/**
+.agentic_planning/.local/
+.agentic_planning/**/.local/
+*.tmp
