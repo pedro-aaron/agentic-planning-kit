@@ -84,6 +84,28 @@ Both write byte-identical files, and either one refreshes an installation perfor
 
 Keep the default prefix. `TRIGGERS.md` and the prompts reference `agentic-planning-kit/` literally, so renaming it means editing every trigger block by hand.
 
+### Git identity
+
+That commit needs an author, so git must know who you are before the installer runs. A fresh shell — a new Windows Subsystem for Linux (WSL) distribution, a container, a continuous-integration (CI) runner — usually does not, and the install stops with `Author identity unknown` after staging the vendored files but before committing them. Set it once:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+These two values are metadata written inside every commit, not credentials: they authenticate nothing and grant no access. Pushing is authorized separately, by a token over HTTPS or by a Secure Shell (SSH) key.
+
+For GitHub to attribute the commits to your profile, `user.email` must be an address verified on your account. Settings → Emails also offers a private `ID+username@users.noreply.github.com` address, which links commits to your profile without publishing your real address in the history. `user.name` is free text and need not match your GitHub username.
+
+To commit under a different identity in one repository — a work account, a shared machine — omit `--global` and set it inside that repository:
+
+```bash
+git -C /path/to/my_workspace config user.name "Your Name"
+git -C /path/to/my_workspace config user.email "you@company.com"
+```
+
+Windows and WSL keep separate git configurations. Setting the identity in one leaves the other unset, so a clone driven from both needs it in both.
+
 ## What the installer changes
 
 1. **`<prefix>/`** — the vendored kit.
@@ -211,3 +233,4 @@ Delete the `agentic-planning-kit/` directory, the managed blocks in `.gitignore`
 | A trigger block cannot find a prompt | The install prefix is not `agentic-planning-kit` |
 | CRLF noise in planning artifacts | The `.gitattributes` fragment is missing from the root |
 | `env: 'bash\r': No such file or directory` from `install_kit.sh` | The kit was cloned on Windows with `core.autocrlf=true`. Refresh the checkout with `git rm --cached -r . && git reset --hard`, or convert in place with `sed -i 's/\r$//' tools/install_kit.sh` |
+| `Author identity unknown` / `empty ident name` during `subtree add` | Git has no `user.name` / `user.email` in that shell. Set them, then run `git reset --hard` in the consumer root to drop the half-staged kit and re-run the installer — do not commit the staged files by hand, since a plain commit lacks the `git-subtree-dir:` metadata that later `subtree pull` needs |
