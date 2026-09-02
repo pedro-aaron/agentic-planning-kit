@@ -379,16 +379,21 @@ else {
 
 Write-Step 'Next steps'
 Write-Host ''
-Write-Host '  1. Review and commit the merged fragments:' -ForegroundColor White
+Write-Host '  1. Review, commit and push the merged fragments (the installer never pushes):' -ForegroundColor White
 Write-Host "       git -C `"$root`" status"
+Write-Host "       git -C `"$root`" add .gitignore .gitattributes .github"
+Write-Host "       git -C `"$root`" commit -m 'Install agentic-planning-kit v3 control plane'"
+Write-Host "       git -C `"$root`" push"
 Write-Host ''
-Write-Host '  2. Set the CODEOWNERS owner to your team handle when you have one, then protect main:' -ForegroundColor White
-Write-Host '       no direct pushes, required checks, serialized merge/integration queue.'
-Write-Host ''
-Write-Host '  3. Establish planning state from a session opened at the consumer root:' -ForegroundColor White
+Write-Host '  2. Establish planning state from a session opened at the consumer root:' -ForegroundColor White
 Write-Host "       greenfield  -> $Prefix/TRIGGERS.md route 3 (PROPOSE)"
 Write-Host "       brownfield  -> $Prefix/TRIGGERS.md route 1 (OBSERVE), then route 5"
 Write-Host "       existing v2 -> $Prefix/TRIGGERS.md route M (PLAN)"
+Write-Host ''
+Write-Host '  3. Only then protect main: no direct pushes, required checks, serialized' -ForegroundColor White
+Write-Host '     merge/integration queue. The CI check fails until planning state exists,'
+Write-Host '     so enabling it earlier blocks every pull request. Set the CODEOWNERS'
+Write-Host '     owner to your team handle at the same time.'
 Write-Host ''
 if ($Mode -eq 'subtree') {
     Write-Host '  Update the kit later with:' -ForegroundColor White

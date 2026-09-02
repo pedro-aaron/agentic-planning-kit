@@ -343,16 +343,21 @@ fi
 step 'Next steps'
 cat <<NEXT
 
-  1. Review and commit the merged fragments:
+  1. Review, commit and push the merged fragments (the installer never pushes):
        git -C "$root" status
+       git -C "$root" add .gitignore .gitattributes .github
+       git -C "$root" commit -m "Install agentic-planning-kit v3 control plane"
+       git -C "$root" push
 
-  2. Set the CODEOWNERS owner to your team handle when you have one, then protect main:
-       no direct pushes, required checks, serialized merge/integration queue.
-
-  3. Establish planning state from a session opened at the consumer root:
+  2. Establish planning state from a session opened at the consumer root:
        greenfield  -> $prefix/TRIGGERS.md route 3 (PROPOSE)
        brownfield  -> $prefix/TRIGGERS.md route 1 (OBSERVE), then route 5
        existing v2 -> $prefix/TRIGGERS.md route M (PLAN)
+
+  3. Only then protect main: no direct pushes, required checks, serialized
+     merge/integration queue. The CI check fails until planning state exists,
+     so enabling it earlier blocks every pull request. Set the CODEOWNERS
+     owner to your team handle at the same time.
 
 NEXT
 

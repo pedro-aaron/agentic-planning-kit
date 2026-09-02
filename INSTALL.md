@@ -186,14 +186,29 @@ After a manual install, merge the fragments yourself — or run either installer
 
 ## After installing
 
-1. Review and commit the merged fragments.
-2. Set the CODEOWNERS owner to your team handle, replacing the `@myteam` placeholder. Note that the fragment protects the vendored kit itself: a feature branch must never be able to edit the validator that gates it.
-3. Protect `main`: no direct pushes, required checks, and a serialized merge/integration queue.
-4. Configure the protected integration identity that runs route 5.
-5. Establish planning state from a session opened at the consumer root:
+1. Review, commit and push the merged fragments. Neither installer ever pushes, and the subtree commit it created is local until you send it:
+
+   ```bash
+   git -C /path/to/my_workspace status
+   git -C /path/to/my_workspace add .gitignore .gitattributes .github
+   git -C /path/to/my_workspace commit -m "Install agentic-planning-kit v3 control plane"
+   git -C /path/to/my_workspace push
+   ```
+
+   A subtree install produces three commits on `main`: the squashed kit content, the merge that grafts it under the prefix, and your own commit for the fragments. Any Git client works — GitHub Desktop pushes them just as well.
+
+2. Establish planning state from a session opened at the consumer root:
    - greenfield → `TRIGGERS.md` route 3 (`PROPOSE`)
    - brownfield → `TRIGGERS.md` route 1 (`OBSERVE`), then route 5
    - existing v2 workspace → `TRIGGERS.md` route M (`PLAN`)
+
+   Until this runs there is no `.agentic_planning/CONTRACT.json`, and the validator exits with `ARTIFACT_MISSING`. That is expected on a fresh install.
+
+3. Set the CODEOWNERS owner to your team handle, replacing the `@myteam` placeholder. Note that the fragment protects the vendored kit itself: a feature branch must never be able to edit the validator that gates it.
+4. Protect `main`: no direct pushes, required checks, and a serialized merge/integration queue. Do this **after** step 2 — the CI check fails while planning state is missing, so making it required any earlier blocks every pull request.
+5. Configure the protected integration identity that runs route 5.
+
+Pushing the install does not by itself configure `main`. Steps 3 to 5 happen in the repository's settings on GitHub, not in the working tree, and nothing in the kit can perform them for you.
 
 ## Updating
 
