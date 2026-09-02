@@ -210,3 +210,4 @@ Delete the `agentic-planning-kit/` directory, the managed blocks in `.gitignore`
 | `git subtree` refuses to run | It needs at least one commit and a clean working tree; commit or stash first |
 | A trigger block cannot find a prompt | The install prefix is not `agentic-planning-kit` |
 | CRLF noise in planning artifacts | The `.gitattributes` fragment is missing from the root |
+| `env: 'bash\r': No such file or directory` from `install_kit.sh` | The kit was cloned on Windows with `core.autocrlf=true`. Refresh the checkout with `git rm --cached -r . && git reset --hard`, or convert in place with `sed -i 's/\r$//' tools/install_kit.sh` |

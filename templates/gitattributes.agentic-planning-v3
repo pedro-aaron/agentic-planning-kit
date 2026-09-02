@@ -2,3 +2,5 @@
 .agentic_planning/** text eol=lf
 WORKSPACE_MAP.md text eol=lf
 PROJECT_BLUEPRINT.md text eol=lf
+# Shell scripts must stay LF or they break under bash/WSL on Windows checkouts.
+*.sh text eol=lf
