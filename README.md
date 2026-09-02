@@ -2,9 +2,15 @@
 
 A portable, stack-agnostic kit for planning and executing agent work safely when several people use the same repositories through Git.
 
-It is installed over a **workspace** — the root holding every internal project of one solution — so that a feature spanning a migration, an API, a backend and a frontend is planned, claimed, executed and accepted as one unit. See [Workspaces](#workspaces).
+Source: <https://github.com/pedro-aaron/agentic-planning-kit>
 
-V3 keeps v2's strongest guarantees — binding feature contracts, explicit dependency graphs, deterministic quality gates, immutable test expectations and human acceptance QA — and changes the collaboration model:
+```bash
+git clone https://github.com/pedro-aaron/agentic-planning-kit.git
+```
+
+It is installed over a **workspace** — the root holding every internal project of one solution — so that a feature spanning a migration, an application programming interface (API), a backend and a frontend is planned, claimed, executed and accepted as one unit. See [Workspaces](#workspaces).
+
+V3 keeps v2's strongest guarantees — binding feature contracts, explicit dependency graphs, deterministic quality gates, immutable test expectations and human acceptance quality assurance (QA) — and changes the collaboration model:
 
 > **Many writers create immutable, identity-owned sources. One protected integration writer regenerates global projections.**
 
@@ -20,7 +26,7 @@ Feature branches never edit `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, t
 | 3 | [`PROMPT_INIT_NEW_PROJECT.md`](./PROMPT_INIT_NEW_PROJECT.md) | Propose, refine and materialize a greenfield project | Immutable project revisions/events and F00 sources |
 | 4 | [`PROMPT_ANALYZE_BEFORE_DEVELOP.md`](./PROMPT_ANALYZE_BEFORE_DEVELOP.md) | Produce an evidence-backed analysis | One globally identified analysis tree |
 | 5 | [`PROMPT_RECONCILE_MAIN.md`](./PROMPT_RECONCILE_MAIN.md) | Validate integration and regenerate global state | Protected catalog, map, index, mirrors and managed blocks |
-| CLI | [`tools/agentic_planning_v3.py`](./tools/agentic_planning_v3.py) | Validate artifacts/claims and deterministically render projections | Read-only by default; explicit `--write` for integration |
+| CLI | [`tools/agentic_planning_v3.py`](./tools/agentic_planning_v3.py) | Command-line interface (CLI): validate artifacts/claims and deterministically render projections | Read-only by default; explicit `--write` for integration |
 | Setup | [`tools/install_kit.ps1`](./tools/install_kit.ps1) / [`.sh`](./tools/install_kit.sh) | Vendor the kit into a consumer repository and merge its Git fragments | Consumer repository; never pushes |
 
 Copy-paste launchers live in [`TRIGGERS.md`](./TRIGGERS.md). The normative data and Git rules live in [`CONTRACT_V3.md`](./CONTRACT_V3.md) and [`GIT_POLICY.md`](./GIT_POLICY.md). [`INSTALL.md`](./INSTALL.md) covers getting the kit into a consumer repository without nesting one Git repository inside another.
@@ -52,7 +58,7 @@ Copy-paste launchers live in [`TRIGGERS.md`](./TRIGGERS.md). The normative data 
 WORKSPACE_MAP.md                    # generated; planning-map contract 4
 ```
 
-Slugs and usernames are labels, never identities. New attempts always receive new run/attempt IDs, so retries cannot overwrite evidence. The compact run path keeps full UUID identities without exceeding common Windows/Git path limits; the receipt itself carries `step_id`.
+Slugs and usernames are labels, never identities. New attempts always receive new run/attempt identifiers (IDs), so retries cannot overwrite evidence. The compact run path keeps full universally unique identifier (UUID) identities without exceeding common Windows/Git path limits; the receipt itself carries `step_id`.
 
 ## Source ownership
 
@@ -99,9 +105,9 @@ Every feature manifest declares product write scopes and non-file resources:
 | Same `isolated` resource with distinct keys | Compatible |
 | Any `UNKNOWN` access | Treat as exclusive |
 
-Portable JSON path scopes are limited to `kind: exact` or `kind: tree`; human views may display a tree as `directory/**`. The validator normalizes separators, rejects traversal and checks that the real Git diff stays within the declared scope.
+Portable JavaScript Object Notation (JSON) path scopes are limited to `kind: exact` or `kind: tree`; human views may display a tree as `directory/**`. The validator normalizes separators, rejects traversal and checks that the real Git diff stays within the declared scope.
 
-Runtime isolation is separate from Git isolation. Compose projects, DB/schema names, ports, volumes, caches, temporary directories and report locations use a namespace derived from feature/run IDs. A resource without a proven namespace stays exclusive.
+Runtime isolation is separate from Git isolation. Compose projects, database (DB)/schema names, ports, volumes, caches, temporary directories and report locations use a namespace derived from feature/run IDs. A resource without a proven namespace stays exclusive.
 
 ## RECONCILE_MAIN
 
@@ -128,7 +134,7 @@ V3 preserves the v2 quality model:
 - Executors may add tests but never delete, skip or weaken required or existing tests.
 - Every applicable deterministic gate from the workspace catalog must pass with exit code 0.
 - Reports record commands, exit codes and every test file touched.
-- Human QA remains a Spanish action → expected-result checklist for UX, device flows, visuals and end-to-end acceptance.
+- Human QA remains a Spanish action → expected-result checklist for user experience (UX), device flows, visuals and end-to-end acceptance.
 
 The planning system's own schemas, claim checks and deterministic rendering are also gates. Markdown instructions alone are not considered enforcement.
 
@@ -139,7 +145,7 @@ For a v2 workspace:
 1. Synchronize local `main` with `origin/main` outside the agent session.
 2. Run migration route M in `PLAN` mode.
 3. Review blockers and the exact write/rollback manifest.
-4. Run route M in `APPLY` mode with the exact main SHA and authorization.
+4. Run route M in `APPLY` mode with the exact main Secure Hash Algorithm (SHA) commit identifier and authorization.
 5. Review and commit the migration changes directly on `main`; the prompt itself never commits or pushes.
 6. From then on, v2 trees are read-only and all new writes use v3.
 
@@ -189,7 +195,7 @@ Separate projects are independently deployable, but they are not independent in 
 
 | Topology | Layout | Consequence |
 |---|---|---|
-| Single repository | One Git repository at the workspace root; projects are directories inside it | Strongest guarantees. One `main`, one merge queue, and a cross-project change is one atomic commit that CI validates as a unit |
+| Single repository | One Git repository at the workspace root; projects are directories inside it | Strongest guarantees. One `main`, one merge queue, and a cross-project change is one atomic commit that continuous integration (CI) validates as a unit |
 | Multi-repository | Workspace root containing independent Git repositories | One configured coordinator repository owns `.agentic_planning/` and global projections. Manifests pin the planning base of every touched repository and receipts bind every validated integration commit |
 
 Prefer the single-repository topology when the projects genuinely ship together: Git already gives cross-project atomicity there, at no cost. The multi-repository topology buys that atomicity back with process, and only partially — completion is projected only after every repository is integrated, and a partial integration is `PARTIALLY_MERGED`/`BLOCKED`, never `COMPLETED`.
@@ -232,3 +238,7 @@ agentic-planning-kit/
 ```
 
 This repository contains the kit only. Consumer migrations and product changes occur only when an operator installs the kit into a target workspace — see [`INSTALL.md`](./INSTALL.md) — and invokes the corresponding prompt.
+
+```bash
+git subtree add --prefix agentic-planning-kit https://github.com/pedro-aaron/agentic-planning-kit.git main --squash
+```

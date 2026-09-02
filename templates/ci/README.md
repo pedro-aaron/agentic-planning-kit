@@ -1,4 +1,4 @@
-# CI templates
+# Continuous integration (CI) templates
 
 These files are templates, not active workflows for the kit repository.
 

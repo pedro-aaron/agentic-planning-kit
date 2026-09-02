@@ -7,7 +7,7 @@ kit's local control plane.
 ## 1. Ownership and sources of truth
 
 1. An entity descriptor, plan revision, event, run receipt, and map delta is an
-   immutable, ID-addressed source artifact. Slugs, usernames, timestamps, and
+   immutable, identifier (ID)-addressed source artifact. Slugs, usernames, timestamps, and
    filesystem order are never identities.
 2. `.agentic_planning/README.md` and `WORKSPACE_MAP.md` are generated views. They
    contain no source-only state and must be reproducible byte-for-byte from entity
@@ -28,7 +28,7 @@ blocks reconciliation may update.
 
 ## 2. Identity and layout
 
-IDs are a lowercase UUID preceded by a type prefix: `repo_`, `ftr_`, `ana_`,
+IDs are a lowercase universally unique identifier (UUID) preceded by a type prefix: `repo_`, `ftr_`, `ana_`,
 `prj_`, `rev_`, `evt_`, `stp_`, `run_`, `att_`, `delta_`, `cat_`, or `rec_`. A readable
 slug may repeat. Native entity paths are:
 
@@ -58,7 +58,7 @@ Receipts are written only when an attempt is terminal (`SUCCEEDED`, `FAILED`, or
 `CANCELLED`); queue/running state is ephemeral and is never frozen as a receipt.
 The immutable descriptor records only `initial_revision_id`; the current revision
 is the last non-null `revision_id` in the reduced event chain, falling back to the
-initial revision when no event selects another. One event is one JSON file. Events
+initial revision when no event selects another. One event is one JavaScript Object Notation (JSON) file. Events
 for an entity form one parent-linked chain; two children of the same parent are a
 compare-and-swap conflict. A `RECONCILED` event must name its successful
 `reconciliation_receipt_id`, and that receipt must hash the event as an output.
@@ -67,7 +67,7 @@ compare-and-swap conflict. A `RECONCILED` event must name its successful
 
 The closed JSON Schemas in `schemas/` define persisted fields. Unknown fields,
 duplicate JSON keys, malformed IDs, unsafe paths, and non-finite numbers are
-invalid. JSON is UTF-8; generated Markdown is UTF-8 with LF endings. Stable
+invalid. JSON is 8-bit Unicode Transformation Format (UTF-8); generated Markdown is UTF-8 with line-feed (LF) endings. Stable
 ordering is by semantic key and ID, never discovery order or local time.
 
 `planning_base` records where a plan was authored. It is immutable and distinct
@@ -136,7 +136,7 @@ product repositories require one configured coordinator repository that owns the
 planning tree and global projections; partial multi-repository integration must
 never be projected as completed.
 
-The executable checks used by prompts and CI are:
+The executable checks used by prompts and continuous integration (CI) are:
 
 ```text
 python tools/agentic_planning_v3.py validate --root <workspace>

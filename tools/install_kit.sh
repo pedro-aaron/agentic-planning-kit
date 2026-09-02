@@ -57,7 +57,9 @@ Usage: install_kit.sh --workspace PATH [options]
 
   --workspace PATH        Any path inside the consumer repository (required)
   --mode subtree|copy     subtree (default, updatable) or copy (snapshot)
-  --kit-source URL|PATH   Kit repository to vendor (default: this kit)
+  --kit-source URL|PATH   Kit repository to vendor (default: this kit; pass
+                          https://github.com/pedro-aaron/agentic-planning-kit.git
+                          to vendor upstream instead of your local copy)
   --kit-ref REF           Branch or tag to vendor (default: main)
   --remote-name NAME      Remote name for subtree mode (default: planning-kit)
   --prefix NAME           Install directory (default: agentic-planning-kit)

@@ -32,7 +32,7 @@ V2 → v3 migration is not normal feature work. It runs directly in the already 
 The migration prompt:
 
 - requires branch name exactly `main`;
-- requires `HEAD == upstream == EXPECTED_MAIN_SHA`, ahead 0 and behind 0;
+- requires `HEAD == upstream == EXPECTED_MAIN_SHA` — the expected Secure Hash Algorithm (SHA) commit identifier of `main` — with ahead 0 and behind 0;
 - requires a completely clean index/worktree, including untracked files;
 - may refresh remote-tracking evidence but never pulls, merges or rebases;
 - never creates, switches or deletes branches/worktrees;
@@ -57,7 +57,7 @@ If any precondition fails, the operator synchronizes outside the migration sessi
 For every candidate, the serialized integration lane must:
 
 1. combine it with the latest `main`;
-2. validate schemas, IDs, immutable hashes and causal event heads;
+2. validate schemas, identifiers (IDs), immutable hashes and causal event heads;
 3. compare active write/resource claims;
 4. ensure the real Git diff is inside declared scopes;
 5. run applicable product quality gates;
@@ -71,7 +71,7 @@ When candidate-time writes are unavailable, post-merge reconciliation is permitt
 
 ## Protected global paths
 
-At minimum, ordinary contributor changes to these paths fail CI:
+At minimum, ordinary contributor changes to these paths fail continuous integration (CI):
 
 ```text
 WORKSPACE_MAP.md
@@ -108,4 +108,4 @@ The coordinator may project `EXECUTED` only when all required repositories are i
 - A stale map item fails with `STALE_MAP_CLAIM`; unrelated catalog changes may be revalidated without redesign.
 - A failed generator leaves no partial protected writes; rerun from its staged/receipt basis or restore exact preimages.
 - An abandoned claim requires an audited cancellation/release event.
-- Never use `merge=ours`, `merge=union` or last-writer-wins for canonical JSON, events or generated views.
+- Never use `merge=ours`, `merge=union` or last-writer-wins for canonical JavaScript Object Notation (JSON), events or generated views.

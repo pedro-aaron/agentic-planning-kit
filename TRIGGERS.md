@@ -2,9 +2,11 @@
 
 Copy one block into a fresh agent session started at the target workspace root. Replace every placeholder. Each referenced prompt is the complete task specification; the trigger supplies only invocation data.
 
+Placeholders ending in `_ID` take an entity identifier (ID): a lowercase universally unique identifier (UUID) with a type prefix such as `ftr_`, `ana_`, `prj_` or `mig_`.
+
 ## Git preamble for normal v3 work
 
-Routes 1–4 run on a contributor/integration branch according to the repository policy. Before launching them, refresh and integrate `origin/main`, then provide the actual SHA. Never let an ordinary route write protected global projections.
+Routes 1–4 run on a contributor/integration branch according to the repository policy. Before launching them, refresh and integrate `origin/main`, then provide the actual Secure Hash Algorithm (SHA) commit identifier. Never let an ordinary route write protected global projections.
 
 Route 5 is the protected integration writer. Route M is the one-time exception: v2 migration runs directly on an already synchronized `main` and never creates or changes branches/worktrees.
 
@@ -217,9 +219,9 @@ For crash recovery, rerun the same block with `MODE: RECOVER`, the same IDs/SHAs
 
 ---
 
-## Local/CI validation
+## Local and continuous integration (CI) validation
 
-The CLI is read-only unless `render --write` is explicitly used by the protected integration task:
+The command-line interface (CLI) is read-only unless `render --write` is explicitly used by the protected integration task:
 
 ```text
 python agentic-planning-kit/tools/agentic_planning_v3.py validate --root .

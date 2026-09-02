@@ -23,7 +23,10 @@
     copy vendors a detached snapshot with no update path.
 
 .PARAMETER KitSource
-    Kit repository URL or local path. Defaults to this script's own kit.
+    Kit repository URL or local path. Defaults to this script's own kit, which
+    vendors the copy you are looking at. Pass the canonical URL
+    https://github.com/pedro-aaron/agentic-planning-kit.git to vendor upstream
+    instead.
 
 .PARAMETER Prefix
     Directory name inside the consumer repository. Keep the default:

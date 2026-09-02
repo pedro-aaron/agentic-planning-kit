@@ -1,6 +1,6 @@
 # Installing the kit into a consumer repository
 
-This kit is a control plane, not a library. It is installed into the repository whose work it governs, and CI executes it there.
+This kit is a control plane, not a library. It is installed into the repository whose work it governs, and continuous integration (CI) executes it there.
 
 ## Why you cannot just copy the folder
 
@@ -42,7 +42,13 @@ Each project keeps its own build, tests and deployment; the workspace only adds 
 
 ## Quick install
 
-Two equivalent installers ship with the kit. Run either from the kit directory, with the consumer repository already initialized.
+The kit is public at **<https://github.com/pedro-aaron/agentic-planning-kit>**. Clone it once, anywhere outside the consumer repository:
+
+```bash
+git clone https://github.com/pedro-aaron/agentic-planning-kit.git
+```
+
+Two equivalent installers ship with it. Run either from that clone, with the consumer repository already initialized.
 
 Windows:
 
@@ -62,7 +68,7 @@ Preview every change first with `-DryRun` / `--dry-run`. Neither script ever pus
 |---|---|---|---|
 | `-Workspace` | `--workspace` | required | Any path inside the consumer repository |
 | `-Mode` | `--mode` | `subtree` | `subtree` (updatable) or `copy` (detached snapshot) |
-| `-KitSource` | `--kit-source` | this kit | Kit URL or local path |
+| `-KitSource` | `--kit-source` | this clone | Kit uniform resource locator (URL) or local path; pass `https://github.com/pedro-aaron/agentic-planning-kit.git` to vendor upstream instead of your local copy |
 | `-KitRef` | `--kit-ref` | `main` | Branch or tag to vendor |
 | `-RemoteName` | `--remote-name` | `planning-kit` | Remote name used by subtree mode |
 | `-Prefix` | `--prefix` | `agentic-planning-kit` | Install directory; see the warning below |
@@ -82,7 +88,7 @@ Keep the default prefix. `TRIGGERS.md` and the prompts reference `agentic-planni
 
 1. **`<prefix>/`** — the vendored kit.
 2. **Root `.gitignore`** — the force-include block from `templates/gitignore.agentic-planning-v3`.
-3. **Root `.gitattributes`** — the LF rules from `templates/gitattributes.agentic-planning-v3`.
+3. **Root `.gitattributes`** — the line-feed (LF) end-of-line rules from `templates/gitattributes.agentic-planning-v3`.
 4. **`.github/CODEOWNERS`** — the protected-path fragment, with the placeholder owner substituted.
 5. **`.github/workflows/agentic-planning-v3.yml`** — the CI template with `KIT_PATH` set to the prefix.
 
@@ -94,16 +100,18 @@ Items 2–4 are written inside idempotent managed blocks:
 # <<< agentic-planning-v3 (managed by install_kit) <<<
 ```
 
-Re-running with `-RefreshOnly` / `--refresh-only` rewrites the block in place instead of appending a duplicate. Everything outside the markers is yours and is never touched. A file carrying a managed block is rewritten with LF endings throughout, matching the kit's `.gitattributes` rules — expect that one-time normalization if the consumer repository stored those files with CRLF.
+Re-running with `-RefreshOnly` / `--refresh-only` rewrites the block in place instead of appending a duplicate. Everything outside the markers is yours and is never touched. A file carrying a managed block is rewritten with LF endings throughout, matching the kit's `.gitattributes` rules — expect that one-time normalization if the consumer repository stored those files with carriage-return line-feed (CRLF) endings.
 
 **The fragments must live in the repository root, not in the kit directory.** The kit's own `.gitignore` only applies to its own subtree, so its `!.agentic_planning/**` rules protect nothing from there. The block must also be appended *after* your existing rules, because in `.gitignore` the last matching pattern wins — that is what lets `!.agentic_planning/**` rescue canonical sources from a broad `runs/`, `events/` or `projects/` ignore. Get this wrong and the protected check fails with `PLANNING_SOURCE_IGNORED`.
 
 ## Manual install
 
+Every command below can be run without cloning the kit first — the URL is public.
+
 ### git subtree — recommended
 
 ```bash
-git remote add planning-kit <kit-url-or-path>
+git remote add planning-kit https://github.com/pedro-aaron/agentic-planning-kit.git
 ```
 
 ```bash
@@ -112,6 +120,8 @@ git subtree add --prefix agentic-planning-kit planning-kit main --squash
 
 The kit's files land as ordinary tracked content, so a plain `git clone` and a plain CI checkout both get everything, and `git subtree pull` gives a real upgrade path.
 
+To pin a released version instead of tracking `main`, substitute the tag for `main` in both the `subtree add` and later `subtree pull` commands.
+
 ### Plain copy
 
 Copy the kit's contents into `agentic-planning-kit/`, **excluding `.git`**. Simplest option, no upgrade path, and the vendored version is untraceable unless you record it yourself.
@@ -119,17 +129,31 @@ Copy the kit's contents into `agentic-planning-kit/`, **excluding `.git`**. Simp
 ### Submodule
 
 ```bash
-git submodule add <kit-url> agentic-planning-kit
+git submodule add https://github.com/pedro-aaron/agentic-planning-kit.git agentic-planning-kit
 ```
 
 Pins an exact upstream commit, but every clone needs `--recurse-submodules` and the CI checkout needs `submodules: true`. A contributor who forgets ends up with an empty kit directory and failing gates.
 
 ### Outside the repository
 
-Install the kit anywhere and invoke it with `--root` pointing at the workspace:
+Clone the kit anywhere and invoke it with `--root` pointing at the workspace:
+
+```bash
+git clone https://github.com/pedro-aaron/agentic-planning-kit.git /opt/agentic-planning-kit
+```
 
 ```bash
 python /opt/agentic-planning-kit/tools/agentic_planning_v3.py validate --root .
+```
+
+In CI, fetch the kit as a second checkout beside the product repository and point `KIT_PATH` at it:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    repository: pedro-aaron/agentic-planning-kit
+    ref: main          # pin a tag or Secure Hash Algorithm (SHA) commit identifier for reproducible gates
+    path: .planning-kit
 ```
 
 Keeps the product repository clean and lets several repositories share one kit, but CI needs a second checkout step, and reproducibility depends on you pinning a ref yourself. This is the sensible choice for a **multi-repository workspace**: install once, and let every repository's CI reach the same kit while the coordinator repository that owns `.agentic_planning/` remains the single planning tree. It is the wrong choice for a single-repository workspace, where vendoring costs nothing and removes a moving part.
@@ -149,8 +173,16 @@ After a manual install, merge the fragments yourself — or run either installer
 
 ## Updating
 
+From the consumer repository, with the `planning-kit` remote already configured by the installer:
+
 ```bash
 git subtree pull --prefix agentic-planning-kit planning-kit main --squash
+```
+
+If the remote is missing — a fresh clone of the consumer repository does not carry it, since remotes are local configuration — add it back first:
+
+```bash
+git remote add planning-kit https://github.com/pedro-aaron/agentic-planning-kit.git
 ```
 
 Then refresh the generated blocks in case the templates changed:
