@@ -16,6 +16,30 @@ V3 keeps v2's strongest guarantees — binding feature contracts, explicit depen
 
 Feature branches never edit `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, the canonical catalog or managed agent-instruction blocks. They create globally identified manifests, plan revisions, events, run receipts and semantic map deltas. `RECONCILE_MAIN` validates those sources against the current integration candidate and is the only route allowed to update global views.
 
+## Glossary
+
+The kit uses a small vocabulary consistently. Everything else follows from these terms.
+
+| Term | Meaning |
+|---|---|
+| **Workspace** | The root that holds every internal project of one solution, plus the single `.agentic_planning/` tree that spans them. |
+| **Entity** | One planned thing with a globally unique identity: a feature (`ftr_`), an analysis (`ana_`) or a greenfield project (`prj_`). |
+| **Source** | An artifact an ordinary branch may create: descriptors, plan revisions, events, run receipts, map deltas. Sources are immutable once written. |
+| **Projection** | A generated global view rendered *from* sources: `WORKSPACE_MAP.md`, the catalog, the index, root blueprint mirrors, managed agent blocks. Only route 5 may write one. |
+| **Revision** (`rev_`) | An immutable snapshot of a plan or blueprint. Changing a plan appends a new revision; it never edits the old one. |
+| **Event** (`evt_`) | One immutable state transition, one per file. The current state of an entity is the result of replaying its events. |
+| **Reduced head** | That replay result — the entity's current state after applying every event in order. |
+| **Reconciliation** | The act of validating branch-created sources against the current `main` and regenerating the projections. Route 5 only. |
+| **Claim** | A declared write scope or shared resource an entity reserves, so two people cannot plan conflicting work over the same files, database or service. |
+| **Map delta** | A semantic, proposed change to the workspace catalog. `PLANNED` deltas record intent; reconciliation turns accepted ones into fact. |
+| **Gate** | A deterministic, machine-checkable quality check (build, tests, linters). Gates prove correctness; humans do acceptance QA. |
+| **Greenfield / brownfield** | Greenfield is an empty or planning-only root (route 3). Brownfield is a root that already has buildable product code (route 1, then 5). |
+| **F00** | The scaffold feature a greenfield materialization creates: the first executable plan that turns the blueprint into a real project skeleton. |
+| **Merge candidate** | The exact commit that combines the latest `main` with one change set, built by the merge queue and validated before `main` advances. |
+| **Run / attempt** | One execution of a plan step (`run_`) and one try within it (`att_`). Attempts are append-only, so a retry never overwrites an earlier report. |
+
+The rule that connects them: **many writers create sources; one protected writer renders projections.**
+
 ## Prompts and tools
 
 | Route | File | Purpose | Writes |

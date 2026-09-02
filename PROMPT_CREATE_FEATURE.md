@@ -6,6 +6,30 @@ You create a feature entity and an immutable execution-plan revision. You write 
 
 Treat the free text after `Feature to build:` as the feature intent. If it is empty, or materially different interpretations would change the contract, touched repositories, write scopes or resource claims, ask at most **3** crisp clarifying questions. Otherwise state bounded assumptions and proceed.
 
+## Invocation contract
+
+The trigger supplies exactly two things:
+
+```text
+TARGET_PATH: .
+Feature to build:
+<free text: the outcome, its users, the constraints that matter and the explicit non-scope>
+```
+
+That is the entire human surface. Never ask the launcher for a commit identifier, a content hash or an entity identifier (ID), and never refuse to start because one was not supplied.
+
+## Input resolution — before you ask a human anything
+
+Derive every other value from the workspace, and say what you derived in your first response:
+
+- **Planning base.** Record each repository ID, root and exact `HEAD` yourself as `planning_base`, plus clean or dirty state. Never request a base commit from the launcher.
+- **Feature identity.** Generate the `ftr_`, `rev_`, `evt_`, `stp_`, `run_` and `att_` IDs yourself. A literal `AUTO` in any ID field means "generate one".
+- **Prior analyses.** If the intent text refers to earlier work by name or description — "based on the checkout analysis" — resolve it against `.agentic_planning/analyses/` and record the matched `ana_` ID as a source. Name your match explicitly. If several plausibly match, list them and ask which; if none does, say so and continue without a source link.
+- **Catalog, claims and contract state.** Read them from the planning tree. They are never launcher inputs.
+- **Older triggers.** Accept `FEATURE_INTENT:` as a synonym for `Feature to build:`. Accept and ignore `FEATURE_ID`, `BASE_MAIN_SHA` and `SOURCE_ANALYSIS_IDS` if an older trigger supplies them, resolving their content the way this section describes rather than trusting the supplied value.
+
+Reserve your questions for intent: what the feature must do, for whom, and what is out of scope. Those are the only answers a human actually has.
+
 ---
 
 ## Outcome
@@ -555,6 +579,14 @@ Do not generate v2 paths, fixed `outputs/NN_*.md`, mutable status tables, `plann
 A local lock coordinates one checkout only. Cross-clone authority comes from registered claims, branch protection and merge queue.
 
 ## Completion criteria
+
+Open the summary with one plain line naming what you created, before any hash or path:
+
+```text
+Feature: password-reset  (ftr_4a81…)  — refer to it by this name in later routes
+```
+
+A human who reads only that line must be able to find this feature again without opening the tree.
 
 - Exactly one new v3 feature root; descriptor/revision/event validate and agree.
 - 2–6 steps, acyclic graph, concrete binding contract/tests/gates.

@@ -6,33 +6,80 @@ Agentic Planning Kit v3 is multi-user and event-sourced: project identity is a p
 
 ## Invocation contract
 
-The launcher supplies:
+The launcher supplies only what a person knows. Each mode has its own short surface.
+
+`PROPOSE` — the first blueprint. There is no parent revision to point at:
 
 ```text
-MODE: PROPOSE | REFINE | MATERIALIZE
+MODE: PROPOSE
 TARGET_PATH: .
-PROJECT_INTENT: <required for PROPOSE>
-PROJECT_ID: <prj_<UUID>; required for REFINE/MATERIALIZE>
-BASE_REVISION_ID: <rev_<UUID>; required for REFINE/MATERIALIZE>
-BASE_REVISION_MANIFEST_SHA256: <required for REFINE/MATERIALIZE>
-BASE_BLUEPRINT_SHA256: <required for REFINE/MATERIALIZE>
-BASE_EVENT_ID: <evt_<UUID>; required for REFINE/MATERIALIZE>
-BASE_STATE_SHA256: <required for REFINE/MATERIALIZE>
-BASE_REPOSITORIES: <repo_id/root/exact commit set; required in every mode>
-HUMAN_FEEDBACK: <required for REFINE>
-MATERIALIZATION_ID: <mat_<UUID>; required for MATERIALIZE>
-F00_FEATURE_ID: <ftr_<UUID>; required for MATERIALIZE>
-F00_REVISION_ID: <rev_<UUID>; required for MATERIALIZE>
-MATERIALIZE_AUTHORIZATION: <required exact phrase for MATERIALIZE>
+PROJECT_INTENT:
+<free text: what to build, who will use it, what it must and must not do, and the decisions already made>
 ```
 
-Exact authorization:
+`REFINE` — one more immutable revision, as often as needed:
+
+```text
+MODE: REFINE
+TARGET_PATH: .
+PROJECT: <optional; omit in a continuing session — see Input resolution>
+HUMAN_FEEDBACK:
+<what the human accepts, rejects, wants changed or wants deferred>
+```
+
+`MATERIALIZE` — the irreversible gate, in two calls (see below):
+
+```text
+MODE: MATERIALIZE
+TARGET_PATH: .
+PROJECT: <optional; omit in a continuing session — see Input resolution>
+MATERIALIZE_AUTHORIZATION: <empty on the first call; the exact printed phrase on the second>
+```
+
+Never infer `MODE`. Never ask a human for a commit identifier, a content hash, a
+revision identifier (ID) or an entity ID: those are resolved below.
+
+## Input resolution
+
+Resolve every value the launcher did not supply, and state what you resolved before writing anything.
+
+- **Project identity.** In `PROPOSE`, generate the `prj_` ID and slug. In `REFINE`/`MATERIALIZE`, resolve the project in this order: (1) an explicit `PROJECT` value, matched against directory slugs and descriptor titles under `.agentic_planning/projects/`; (2) the project this same session already created or refined; (3) the only project in the tree, when exactly one exists. If none of those settles it, list the candidates and stop. Report the exact ID you resolved before writing. Never guess between two projects, and never carry a session's project across a change of `TARGET_PATH`.
+- **Parent revision, event and state.** Replay the project's events to its reduced head and take the latest accepted revision as the parent. Compute the manifest, blueprint and state hashes yourself from the canonical bytes on disk. If the human's feedback asks to build on an earlier revision, use the one they named and say so.
+- **Repositories.** Record each repository ID, root and exact `HEAD` yourself. A repository with no commits records `NO_COMMITS`; a repository with no `origin/main` records `NO_UPSTREAM`. Neither blocks a greenfield proposal — an empty repository is the normal starting condition for this route.
+- **Generated identities.** Generate the `rev_`, `evt_`, `dec_`, `delta_`, `mat_`, `ftr_` and F00 `rev_` IDs yourself. A literal `AUTO` in any ID field means "generate one".
+- **Older triggers.** Accept `PROJECT_ID`, `BASE_MAIN_SHA`, `BASE_REVISION_ID`, `PARENT_REVISION_ID`, `PARENT_REVISION_SHA256`, `BASE_REVISION_MANIFEST_SHA256`, `BASE_BLUEPRINT_SHA256`, `BASE_EVENT_ID`, `BASE_STATE_SHA256`, `BASE_REPOSITORIES`, `MATERIALIZATION_ID`, `F00_FEATURE_ID` and `F00_REVISION_ID` when an older trigger supplies them. Verify each against the tree; if a supplied value disagrees with what you read, report the discrepancy and use what you read. Never let a stale supplied hash stand in for the current one.
+
+Resolution is not permission. It lowers what a human must type; it does not lower what `MATERIALIZE` must prove.
+
+## The materialization gate
+
+`MATERIALIZE` is irreversible, so the human authorizes exact bytes — but the machine, not the human, produces those bytes.
+
+This is why an omitted `PROJECT` does not weaken the gate: the authorization phrase names `<PROJECT_ID>` explicitly, and the second call re-resolves and re-verifies it. The human confirms identity by returning that phrase, not by retyping a name above it. If the project you resolved is not the one the phrase names, refuse.
+
+**First call**, with `MATERIALIZE_AUTHORIZATION` empty:
+
+1. Resolve every value above and run the full readiness check.
+2. Write nothing.
+3. Print, in this order: the readiness verdict; the project, parent revision and F00 identities you resolved; a plain-language summary of exactly what will be created; and then the authorization phrase, already filled in.
+4. Stop with `MATERIALIZATION_AUTHORIZATION_REQUIRED`.
+
+The phrase is exactly:
 
 ```text
 MATERIALIZE V3 PROJECT <PROJECT_ID> REVISION <BASE_REVISION_ID> BLUEPRINT <BASE_BLUEPRINT_SHA256> MANIFEST <BASE_REVISION_MANIFEST_SHA256> EVENT <BASE_EVENT_ID> STATE <BASE_STATE_SHA256> AS <MATERIALIZATION_ID> F00 <F00_FEATURE_ID> REVISION <F00_REVISION_ID>
 ```
 
-Every value must match canonical bytes and the currently reduced project head. A generic “continue”, an approval of a prior revision, silence or inferred consent is invalid. Never infer `MODE`. If required inputs are absent, stop and request only the missing values.
+**Second call**, with that phrase pasted back verbatim: resolve every value again from
+scratch, recompute every hash, and compare the result to the phrase. Proceed only on an
+exact match. If anything moved between the two calls — a new event, a new revision, a
+changed repository head — refuse with `BLOCKED_AUTHORIZATION_STALE`, name the value that
+changed, and print the new phrase for a fresh decision.
+
+Readiness must be `PASS` in both calls. A generic "continue", a bare "yes", an approval of
+a prior revision, a reworded phrase, silence, a timeout or model confidence is never
+acceptance. If required inputs are absent, stop and request only the missing values.
+
 
 ## Goal
 
@@ -581,6 +628,14 @@ Only F00 consumes allowlisted planned claims. Normal features remain blocked whi
 - MATERIALIZE cannot weaken F00 invariants or later factual-map requirements.
 
 ## Completion responses
+
+Open every report with one plain line that names what the run produced and what to carry forward, before any hash or path:
+
+```text
+Project: billing-portal  (prj_9f2c…)  — continuing in this session needs no name; note it to return later
+```
+
+A human who reads only that line must be able to continue. Everything below it is for the record, not for the reader to memorize.
 
 - `PROPOSE`: target, project path/ID, revision/event/state/manifest/blueprint hashes, readiness, assumptions, feature-intent DAG/waves, created paths and up to three questions.
 - `REFINE`: base/new revision and event/state hashes, semantic changes or `NO_CHANGE`, decisions created/superseded, readiness and up to three questions.

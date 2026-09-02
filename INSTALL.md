@@ -137,7 +137,7 @@ What each generated file is for is described in [what the installer changes](#wh
 
 The kit is now installed, but there is no planning state for it to govern. Until this step runs there is no `.agentic_planning/CONTRACT.json`, and the validator exits with `ARTIFACT_MISSING` — expected on a fresh install, and the reason step 8 comes later.
 
-Open a session at the **consumer root** (not in the kit directory) and take the route that matches your situation:
+Open a session at the **consumer root** (not in the kit directory) and take the route that matches your situation. The kit's vocabulary — projection, claim, reconciliation — is defined in the [glossary](../README.md#glossary) if a route mentions a term you have not met yet.
 
 | Situation | Route |
 |---|---|

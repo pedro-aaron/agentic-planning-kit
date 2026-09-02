@@ -6,25 +6,45 @@ INIT v3 is deliberately **not** a global-map writer. `WORKSPACE_MAP.md`, `.agent
 
 ## Invocation contract
 
-The launcher supplies the route-1 fields below. `RECONCILE_MAIN` may call the
-same discovery internally with `MODE: RECONCILE_INPUT` and an ephemeral staging
-root after its own authorization preflight.
+Route 1 has two callers with different needs.
+
+A **human launcher** supplies only what a person knows:
 
 ```text
-MODE: OBSERVE | RECONCILE_INPUT
+MODE: OBSERVE
 TARGET_PATH: .
-ENTITY_ID: <ftr_<UUID> | ana_<UUID> | prj_<UUID>; empty means read-only>
-REVISION_ID: <rev_<UUID>; required when ENTITY_ID is set>
-BASE_MAIN_SHA: <origin/main commit incorporated by the caller>
-EXPECTED_MAP_INPUTS: <catalog item IDs + SHA-256 hashes, or empty for first discovery>
-DISCOVERY_SCOPE: <whole workspace or exact touched subprojects>
-RECONCILIATION_ID: <rec_<UUID>; RECONCILE_INPUT only>
-RECONCILIATION_STAGING_ROOT: <ephemeral path supplied by PROMPT_RECONCILE_MAIN; RECONCILE_INPUT only>
+ENTITY: <name or slug of the feature, analysis or project that owns this observation; empty means read-only>
+DISCOVERY_SCOPE: <the whole workspace, or the subprojects the caller touched>
 ```
 
-Never infer `MODE`, identity, revision, base commit or reconciliation authority.
+`RECONCILE_MAIN` calls the same discovery internally, after its own authorization
+preflight, with exact machine values:
 
-- In `OBSERVE`, a valid descriptor and plan manifest must prove that `ENTITY_ID`
+```text
+MODE: RECONCILE_INPUT
+TARGET_PATH: .
+ENTITY_ID: <ftr_<UUID> | ana_<UUID> | prj_<UUID>>
+REVISION_ID: <rev_<UUID>>
+RECONCILIATION_ID: <rec_<UUID>>
+RECONCILIATION_STAGING_ROOT: <ephemeral path supplied by PROMPT_RECONCILE_MAIN>
+```
+
+Never infer `MODE` or reconciliation authority. Identity, revision, base commit and
+catalog inputs are resolved by the next section, never demanded from a human caller.
+
+## Input resolution
+
+In `OBSERVE`, derive everything the caller did not supply, and state what you resolved before writing anything:
+
+- **Entity.** Match `ENTITY` against directory slugs and descriptor titles under `.agentic_planning/features/`, `analyses/` and `projects/`. Report the exact ID you matched. On several plausible matches, list them and stop. On none, say so and continue read-only.
+- **Revision.** Use that entity's latest plan revision. Never ask a human to name one.
+- **Base commit.** Read the incorporated `origin/main` commit yourself and record it. If the repository has no `origin/main`, record `NO_UPSTREAM` and continue; discovery does not depend on a remote existing.
+- **Catalog inputs.** Read the current catalog item IDs and their hashes from `.agentic_planning/catalog/`. An absent or empty catalog means first discovery. A human never supplies a hash.
+- **Older triggers.** Accept `ENTITY_ID`, `REVISION_ID`, `BASE_MAIN_SHA` and `EXPECTED_MAP_INPUTS` when an older trigger supplies them. Verify each against the tree; if a supplied value disagrees with what you read, report the discrepancy and use what you read.
+
+`RECONCILE_INPUT` resolves nothing: its caller has already fixed and authorized every value.
+
+- In `OBSERVE`, a valid descriptor and plan manifest must prove that the resolved entity
   owns its `map-deltas/` directory. Without that proof, INIT is **read-only**:
   print the proposed observations and `RECONCILIATION_REQUIRED`, then stop with
   zero writes.
@@ -343,7 +363,13 @@ V3 requires one coordinator repository to own `.agentic_planning/` and global pr
 
 ## Completion response
 
-Return, in three compact parts:
+Open with one plain line naming the entity you resolved and whether anything was written:
+
+```text
+Observed for: password-reset  (ftr_4a81…)  — 2 map deltas written
+```
+
+Then return, in three compact parts:
 
 1. applicability, run context, producer/revision/base commits and whether writes were authorized;
 2. subprojects, Compose services, commands/gates, stores, resources, seams, recipes and unknown counts; and
