@@ -58,7 +58,7 @@ param(
 
     [string]$Prefix = 'agentic-planning-kit',
 
-    [string]$CodeownersOwner = '@planning-integrators',
+    [string]$CodeownersOwner = '@myteam',
 
     [switch]$SkipCi,
 
@@ -318,11 +318,11 @@ else {
     if ($null -eq $ownersFragment) { Fail 'missing templates/CODEOWNERS.agentic-planning-v3' }
     $ownersBody = Get-FragmentBody $ownersFragment
     $ownersBody = $ownersBody.Replace('/agentic-planning-kit/', '/' + $Prefix + '/')
-    if ($CodeownersOwner -eq '@planning-integrators') {
-        Write-Alert "owner is still the placeholder '@planning-integrators'; replace it with a real team."
+    if ($CodeownersOwner -eq '@myteam') {
+        Write-Note "using the default owner '@myteam'; pass -CodeownersOwner to set your team handle."
     }
     else {
-        $ownersBody = $ownersBody.Replace('@planning-integrators', $CodeownersOwner)
+        $ownersBody = $ownersBody.Replace('@myteam', $CodeownersOwner)
     }
     Merge-ManagedBlock -Path (Join-Path $root '.github/CODEOWNERS') -Body $ownersBody -Label '.github/CODEOWNERS'
 }
@@ -382,7 +382,7 @@ Write-Host ''
 Write-Host '  1. Review and commit the merged fragments:' -ForegroundColor White
 Write-Host "       git -C `"$root`" status"
 Write-Host ''
-Write-Host '  2. Replace the CODEOWNERS placeholder with a real team, then protect main:' -ForegroundColor White
+Write-Host '  2. Set the CODEOWNERS owner to your team handle when you have one, then protect main:' -ForegroundColor White
 Write-Host '       no direct pushes, required checks, serialized merge/integration queue.'
 Write-Host ''
 Write-Host '  3. Establish planning state from a session opened at the consumer root:' -ForegroundColor White

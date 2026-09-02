@@ -53,14 +53,16 @@ Two equivalent installers ship with it. Run either from that clone, with the con
 Windows:
 
 ```powershell
-.\tools\install_kit.ps1 -Workspace C:\path\to\my_workspace -CodeownersOwner "@your-org/your-team"
+.\tools\install_kit.ps1 -Workspace C:\path\to\my_workspace
 ```
 
 macOS and Linux:
 
 ```bash
-./tools/install_kit.sh --workspace ~/src/my_workspace --codeowners-owner "@your-org/your-team"
+./tools/install_kit.sh --workspace ~/src/my_workspace
 ```
+
+Only `-Workspace` / `--workspace` is required. `CODEOWNERS` is written with the placeholder owner `@myteam`; pass `-CodeownersOwner` / `--codeowners-owner "@your-team"` to set your own, now or later with a `--refresh-only` run.
 
 Preview every change first with `-DryRun` / `--dry-run`. Neither script ever pushes.
 
@@ -72,7 +74,7 @@ Preview every change first with `-DryRun` / `--dry-run`. Neither script ever pus
 | `-KitRef` | `--kit-ref` | `main` | Branch or tag to vendor |
 | `-RemoteName` | `--remote-name` | `planning-kit` | Remote name used by subtree mode |
 | `-Prefix` | `--prefix` | `agentic-planning-kit` | Install directory; see the warning below |
-| `-CodeownersOwner` | `--codeowners-owner` | `@planning-integrators` | Real integrator team |
+| `-CodeownersOwner` | `--codeowners-owner` | `@myteam` | GitHub handle of the team that owns the protected paths |
 | `-RefreshOnly` | `--refresh-only` | off | Regenerate managed blocks without touching the vendored kit |
 | `-SkipCi` / `-SkipCodeowners` | `--skip-ci` / `--skip-codeowners` | off | Leave those files alone |
 | `-Force` | `--force` | off | Overwrite an existing workflow or snapshot |
@@ -185,7 +187,7 @@ After a manual install, merge the fragments yourself — or run either installer
 ## After installing
 
 1. Review and commit the merged fragments.
-2. Replace the CODEOWNERS placeholder with a real team. Note that the fragment protects the vendored kit itself: a feature branch must never be able to edit the validator that gates it.
+2. Set the CODEOWNERS owner to your team handle, replacing the `@myteam` placeholder. Note that the fragment protects the vendored kit itself: a feature branch must never be able to edit the validator that gates it.
 3. Protect `main`: no direct pushes, required checks, and a serialized merge/integration queue.
 4. Configure the protected integration identity that runs route 5.
 5. Establish planning state from a session opened at the consumer root:

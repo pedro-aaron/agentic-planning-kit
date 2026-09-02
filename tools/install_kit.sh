@@ -29,7 +29,7 @@ kit_source=''
 kit_ref='main'
 remote_name='planning-kit'
 prefix='agentic-planning-kit'
-codeowners_owner='@planning-integrators'
+codeowners_owner='@myteam'
 refresh_only=0
 skip_ci=0
 skip_codeowners=0
@@ -63,7 +63,7 @@ Usage: install_kit.sh --workspace PATH [options]
   --kit-ref REF           Branch or tag to vendor (default: main)
   --remote-name NAME      Remote name for subtree mode (default: planning-kit)
   --prefix NAME           Install directory (default: agentic-planning-kit)
-  --codeowners-owner OWN  Integrator team (default: @planning-integrators)
+  --codeowners-owner OWN  Integrator team (default: @myteam)
   --refresh-only          Regenerate managed blocks; leave the kit untouched
   --skip-ci               Do not install the CI workflow
   --skip-codeowners       Do not touch CODEOWNERS
@@ -73,7 +73,7 @@ Usage: install_kit.sh --workspace PATH [options]
 
 Examples:
   ./install_kit.sh --workspace ~/src/my_workspace --dry-run
-  ./install_kit.sh --workspace ~/src/my_workspace --codeowners-owner @acme/platform
+  ./install_kit.sh --workspace ~/src/my_workspace --codeowners-owner @acme-devs
 USAGE
 }
 
@@ -291,10 +291,10 @@ else
     [ -f "$owners_fragment" ] || fail 'missing templates/CODEOWNERS.agentic-planning-v3'
     owners_body="$(fragment_body "$owners_fragment")"
     owners_body="${owners_body//\/agentic-planning-kit\//\/$prefix\/}"
-    if [ "$codeowners_owner" = '@planning-integrators' ]; then
-        alert "owner is still the placeholder '@planning-integrators'; replace it with a real team."
+    if [ "$codeowners_owner" = '@myteam' ]; then
+        note "using the default owner '@myteam'; pass --codeowners-owner to set your team handle."
     else
-        owners_body="${owners_body//@planning-integrators/$codeowners_owner}"
+        owners_body="${owners_body//@myteam/$codeowners_owner}"
     fi
     merge_managed_block "$root/.github/CODEOWNERS" "$owners_body" '.github/CODEOWNERS'
 fi
@@ -346,7 +346,7 @@ cat <<NEXT
   1. Review and commit the merged fragments:
        git -C "$root" status
 
-  2. Replace the CODEOWNERS placeholder with a real team, then protect main:
+  2. Set the CODEOWNERS owner to your team handle when you have one, then protect main:
        no direct pushes, required checks, serialized merge/integration queue.
 
   3. Establish planning state from a session opened at the consumer root:

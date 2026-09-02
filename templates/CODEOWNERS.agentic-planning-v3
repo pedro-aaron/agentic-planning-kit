@@ -1,14 +1,14 @@
 # Merge this fragment into the consumer repository's .github/CODEOWNERS.
-# Replace @planning-integrators with the real team/account.
+# Replace @myteam with the real team/account.
 # The vendored kit is the control plane that gates contributor work; a feature
 # branch must never be able to edit the validator that judges it.
-/agentic-planning-kit/                        @planning-integrators
-/WORKSPACE_MAP.md                              @planning-integrators
-/PROJECT_BLUEPRINT.md                         @planning-integrators
-/.agentic_planning/CONTRACT.json              @planning-integrators
-/.agentic_planning/README.md                  @planning-integrators
-/.agentic_planning/catalog/                   @planning-integrators
-/.agentic_planning/reconciliations/           @planning-integrators
-/CLAUDE.md                                    @planning-integrators
-/AGENTS.md                                    @planning-integrators
-/.github/workflows/agentic-planning-v3.yml    @planning-integrators
+/agentic-planning-kit/                        @myteam
+/WORKSPACE_MAP.md                              @myteam
+/PROJECT_BLUEPRINT.md                         @myteam
+/.agentic_planning/CONTRACT.json              @myteam
+/.agentic_planning/README.md                  @myteam
+/.agentic_planning/catalog/                   @myteam
+/.agentic_planning/reconciliations/           @myteam
+/CLAUDE.md                                    @myteam
+/AGENTS.md                                    @myteam
+/.github/workflows/agentic-planning-v3.yml    @myteam
