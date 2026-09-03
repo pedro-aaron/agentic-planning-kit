@@ -223,6 +223,55 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertNotEqual(first_id, second_id)
         self.assertIn("OK validate", stdout)
 
+    def test_active_manifest_repository_identity_must_match_contract(self) -> None:
+        _, revision_id, entity_base = self.fixture.add_entity(
+            scopes=[{"repository_id": self.fixture.repo_id, "kind": "tree", "path": "apps/web"}]
+        )
+        assert revision_id is not None
+        manifest_path = f"{entity_base}/plans/{revision_id}/manifest.json"
+        manifest = json.loads((self.root / manifest_path).read_text(encoding="utf-8"))
+        mismatched_repo_id = prefixed("repo")
+        manifest["planning_base"][0]["repository_id"] = mismatched_repo_id
+        manifest["write_scopes"][0]["repository_id"] = mismatched_repo_id
+        self.fixture.write_json(manifest_path, manifest)
+
+        code, _, stderr = self.run_cli("validate")
+
+        self.assertEqual(1, code)
+        self.assertIn("BLOCKED_REPOSITORY_IDENTITY_CONFLICT", stderr)
+        self.assertIn("planning_base[0].repository_id", stderr)
+        self.assertIn("write_scopes[0].repository_id", stderr)
+
+        manifest["planning_base"][0]["repository_id"] = self.fixture.repo_id
+        manifest["write_scopes"][0]["repository_id"] = self.fixture.repo_id
+        self.fixture.write_json(manifest_path, manifest)
+
+        code, stdout, stderr = self.run_cli("validate")
+
+        self.assertEqual(0, code, stderr)
+        self.assertIn("OK validate", stdout)
+
+    def test_active_manifest_allows_explicit_external_repository_scope(self) -> None:
+        _, revision_id, entity_base = self.fixture.add_entity(
+            scopes=[{"repository_id": self.fixture.repo_id, "kind": "tree", "path": "apps/web"}]
+        )
+        assert revision_id is not None
+        manifest_path = f"{entity_base}/plans/{revision_id}/manifest.json"
+        manifest = json.loads((self.root / manifest_path).read_text(encoding="utf-8"))
+        external_repo_id = prefixed("repo")
+        manifest["planning_base"].append(
+            {"repository_id": external_repo_id, "path": "services/billing", "commit": BASE_COMMIT}
+        )
+        manifest["write_scopes"].append(
+            {"repository_id": external_repo_id, "kind": "tree", "path": "src/billing"}
+        )
+        self.fixture.write_json(manifest_path, manifest)
+
+        code, stdout, stderr = self.run_cli("validate")
+
+        self.assertEqual(0, code, stderr)
+        self.assertIn("OK validate", stdout)
+
     def test_retries_preserve_distinct_attempts_in_one_logical_run(self) -> None:
         entity_id, revision_id, base = self.fixture.add_entity()
         assert revision_id is not None
@@ -663,6 +712,46 @@ class ControlPlaneTests(unittest.TestCase):
         product = self.root / "apps/web/new.py"
         product.parent.mkdir(parents=True, exist_ok=True)
         product.write_text("VALUE = 1\n", encoding="utf-8", newline="\n")
+
+        code, stdout, stderr = self.run_cli("protected", "--base", base)
+
+        self.assertEqual(0, code, stderr)
+        self.assertIn("product scopes are valid", stdout)
+
+    def test_protected_command_requires_scope_for_planning_status(self) -> None:
+        entity_id, revision_id, entity_base = self.fixture.add_entity()
+        assert revision_id is not None
+        self.assertEqual(0, self.run_cli("render", "--write")[0])
+        self.git("init", "-b", "main")
+        self.git("config", "user.email", "fixture@example.com")
+        self.git("config", "user.name", "Fixture")
+        self.git("add", ".")
+        self.git("commit", "-m", "baseline")
+        base = self.git("rev-parse", "HEAD").stdout.strip()
+        self.fixture.add_run(entity_id, revision_id, entity_base)
+        (self.root / "PLANNING_STATUS.md").write_text("# Planning status\n", encoding="utf-8", newline="\n")
+
+        code, _, stderr = self.run_cli("protected", "--base", base)
+
+        self.assertEqual(1, code)
+        self.assertIn("WRITE_SCOPE_VIOLATION", stderr)
+        self.assertIn("PLANNING_STATUS.md", stderr)
+
+        current_manifest_path = f"{entity_base}/plans/{revision_id}/manifest.json"
+        corrected_manifest = json.loads((self.root / current_manifest_path).read_text(encoding="utf-8"))
+        corrected_revision_id = prefixed("rev")
+        corrected_manifest["revision_id"] = corrected_revision_id
+        corrected_manifest["write_scopes"] = [
+            {"repository_id": self.fixture.repo_id, "kind": "exact", "path": "PLANNING_STATUS.md"}
+        ]
+        self.fixture.write_json(
+            f"{entity_base}/plans/{corrected_revision_id}/manifest.json", corrected_manifest
+        )
+        event_id = prefixed("evt")
+        self.fixture.write_json(
+            f"{entity_base}/events/{event_id}.json",
+            self.event(entity_id, corrected_revision_id, event_id, "2026-09-01T13:00:00Z", "PLANNED"),
+        )
 
         code, stdout, stderr = self.run_cli("protected", "--base", base)
 

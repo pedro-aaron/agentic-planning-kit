@@ -15,12 +15,13 @@ Lost track? Run the check in the right-hand column. The first row that fails is 
 | 3. Clone the kit | `tools/install_kit.sh` exists in the clone |
 | 4. Run the installer | `agentic-planning-kit/` exists in the workspace |
 | 5. Commit and push | `git status` is clean and `main` matches `origin/main` |
-| 6. Establish planning state | `validate` exits without `ARTIFACT_MISSING` |
+| 6a. Establish planning state | Planning sources exist; route 3 leaves `PLANNING_STATUS.md` at the root, and before activation `validate` exits 1 with the expected missing-contract result |
+| 6b. Activate the control plane | `validate` and `render --check` both pass |
 | 7. Set the CODEOWNERS owner | `.github/CODEOWNERS` shows no invalid-handle errors on GitHub |
 | 8. Protect `main` | A pull request cannot merge until the planning check passes |
 | 9. Configure the integration identity | Route 5 can run on the protected branch |
 
-Steps 1 to 6 happen on your machine. Steps 7 to 9 happen in the repository settings on GitHub — nothing in the kit can perform them for you, and pushing the install does not configure them.
+Steps 1 to 6b happen on your machine. Steps 7 to 9 happen in the repository settings on GitHub — nothing in the kit can perform them for you, and pushing the install does not configure them.
 
 ---
 
@@ -133,23 +134,37 @@ A subtree install produces three commits on `main`: the squashed kit content, th
 
 What each generated file is for is described in [what the installer changes](#what-the-installer-changes).
 
-## Step 6 — Establish planning state
+## Step 6a — Establish planning state
 
-The kit is now installed, but there is no planning state for it to govern. Until this step runs there is no `.agentic_planning/CONTRACT.json`, and the validator exits with `ARTIFACT_MISSING` — expected on a fresh install, and the reason step 8 comes later.
+The kit is now installed, but there is no planning state for it to govern. Use route 3 for a greenfield workspace; route 1 followed by route 5 is the brownfield path, and route M is the v2 migration path.
 
 Open a session at the **consumer root** (not in the kit directory) and take the route that matches your situation. The kit's vocabulary — projection, claim, reconciliation — is defined in the [glossary](../README.md#glossary) if a route mentions a term you have not met yet.
 
 | Situation | Route |
 |---|---|
-| Greenfield — no existing code to inventory | `TRIGGERS.md` route 3 (`PROPOSE`) |
-| Brownfield — existing code the kit should inventory first | `TRIGGERS.md` route 1 (`OBSERVE`), then route 5 |
+| Greenfield — no existing code to inventory | `TRIGGERS.md` route 3 (`PROPOSE` → `REFINE` → `MATERIALIZE`) |
+| Brownfield — existing code the kit should inventory first | `TRIGGERS.md` route 1 (`OBSERVE`), then route 5 in step 6b |
 | Existing v2 workspace being migrated | `TRIGGERS.md` route M (`PLAN`) |
 
-Confirm it worked:
+After route 3 finishes, before step 6b activates the control plane, `validate` exits 1 with `ARTIFACT_MISSING .agentic_planning/CONTRACT.json`. That is the expected state: route 3 creates planning sources, not the global projections. `PLANNING_STATUS.md` at the workspace root is the human-readable record of what route 3 created.
 
 ```bash
 python agentic-planning-kit/tools/agentic_planning_v3.py validate --root .
+# exits 1: ARTIFACT_MISSING .agentic_planning/CONTRACT.json (expected)
 ```
+
+## Step 6b — Activate the control plane
+
+Integrate the planning sources through normal Git policy, then run `TRIGGERS.md` route 5 with `ACTIVATION: INITIAL_V3_ACTIVATION`. This first protected reconciliation creates `.agentic_planning/CONTRACT.json`, `.agentic_planning/README.md`, `WORKSPACE_MAP.md`, the root `PROJECT_BLUEPRINT.md`, and the managed agent blocks.
+
+Confirm activation worked:
+
+```bash
+python agentic-planning-kit/tools/agentic_planning_v3.py validate --root .
+python agentic-planning-kit/tools/agentic_planning_v3.py render --root . --check
+```
+
+Both commands exit 0.
 
 ## Step 7 — Set the CODEOWNERS owner
 
@@ -167,7 +182,7 @@ A handle that does not resolve is ignored **silently** — GitHub neither fails 
 
 In the repository settings on GitHub: no direct pushes, required status checks, and a serialized merge/integration queue. Requiring review from code owners is what makes step 7 bind.
 
-**Do this after step 6.** The planning check fails while planning state is missing, so making it required any earlier blocks every pull request, including the one that would fix it.
+**Do this after step 6b.** The planning check fails until the control plane is activated, so making it required any earlier blocks every pull request, including the one that would fix it.
 
 ## Step 9 — Configure the integration identity
 
@@ -329,7 +344,7 @@ Delete the `agentic-planning-kit/` directory, the managed blocks in `.gitignore`
 | Symptom | Cause |
 |---|---|
 | CI cannot find `tools/agentic_planning_v3.py` | The kit was added as an embedded repo (gitlink), or `KIT_PATH` does not match the install prefix |
-| `ARTIFACT_MISSING .agentic_planning/CONTRACT.json` | Step 6 has not run yet; the control plane is installed but there is no planning state |
+| `ARTIFACT_MISSING .agentic_planning/CONTRACT.json` | Step 6b has not run yet. This is expected after route 3 in step 6a; integrate the sources and activate the control plane through route 5 |
 | `PLANNING_SOURCE_IGNORED` | The `.gitignore` fragment is missing from the root, or sits above a broader ignore rule |
 | `git subtree` refuses to run | It needs at least one commit and a clean working tree; commit or stash first |
 | A trigger block cannot find a prompt | The install prefix is not `agentic-planning-kit` |

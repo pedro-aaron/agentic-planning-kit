@@ -1097,6 +1097,51 @@ def _active_manifests(artifacts: Sequence[Artifact]) -> list[Artifact]:
     return sorted(active, key=lambda item: str(item.data.get("entity_id")))
 
 
+def _repository_identity_issues(artifacts: Sequence[Artifact]) -> list[Issue]:
+    """Ensure active coordinator-local manifest identities match the contract.
+
+    A manifest may also pin product repositories outside the coordinator.  The
+    coordinator repository is represented by its planning-base entry at ``.``;
+    non-local scopes are permitted only when their repository identity is
+    declared by one of the other planning-base entries.
+    """
+    contracts = _by_type(artifacts, "contract")
+    if len(contracts) != 1:
+        return []
+    contract_repo_id = str(contracts[0].data["repo_id"])
+    issues: list[Issue] = []
+    for manifest in _active_manifests(artifacts):
+        planning_base = manifest.data.get("planning_base", [])
+        external_repository_ids = {
+            str(base.get("repository_id"))
+            for base in planning_base
+            if base.get("path") != "."
+        }
+        for index, base in enumerate(planning_base):
+            if base.get("path") == "." and base.get("repository_id") != contract_repo_id:
+                issues.append(
+                    Issue(
+                        "BLOCKED_REPOSITORY_IDENTITY_CONFLICT",
+                        manifest.relative_path,
+                        f"planning_base[{index}].repository_id {base.get('repository_id')!r} "
+                        f"does not match CONTRACT.repo_id {contract_repo_id!r}",
+                    )
+                )
+        for index, scope in enumerate(manifest.data.get("write_scopes", [])):
+            scope_repo_id = str(scope.get("repository_id"))
+            if scope_repo_id == contract_repo_id or scope_repo_id in external_repository_ids:
+                continue
+            issues.append(
+                Issue(
+                    "BLOCKED_REPOSITORY_IDENTITY_CONFLICT",
+                    manifest.relative_path,
+                    f"write_scopes[{index}].repository_id {scope_repo_id!r} does not match "
+                    f"CONTRACT.repo_id {contract_repo_id!r} or an external planning_base repository",
+                )
+            )
+    return issues
+
+
 def claim_issues(artifacts: Sequence[Artifact]) -> list[Issue]:
     active = _active_manifests(artifacts)
     issues: list[Issue] = []
@@ -1195,6 +1240,7 @@ def validate_workspace(
         issues.extend(_identity_path_issues(artifact))
     issues.extend(_duplicate_id_issues(artifacts))
     issues.extend(_cross_reference_issues(artifacts))
+    issues.extend(_repository_identity_issues(artifacts))
     issues.extend(_protected_path_issues(artifacts))
     if include_claims:
         issues.extend(claim_issues(artifacts))

@@ -129,7 +129,32 @@ Then read the summary. If you agree, send the same block again with the printed 
 
 No project name here either: in a continuing session the agent knows which project it just refined, and the authorization phrase names the project explicitly anyway. From a new session, add a `PROJECT: <<name>>` line to the first call.
 
-Route 5 produces the root blueprint and bootstrap projections after integration; F00 never writes them directly.
+> **After route 3**
+>
+> **What you get:** the immutable planning tree, the F00 plan, and `PLANNING_STATUS.md` at the workspace root.
+>
+> **What does not exist yet:** `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, the root `PROJECT_BLUEPRINT.md`, and the `CLAUDE.md`/`AGENTS.md` managed blocks. `validate` exits 1 until route 5 runs.
+>
+> **Next:** integrate the sources through normal Git policy, then run route 5. Start with the following `CHECK` invocation; after review, repeat it as `WRITE` with the populated authorization. F00 never writes the global projections directly.
+
+```text
+Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your complete task spec.
+
+MODE: CHECK
+TARGET_PATH: .
+RUN_CONTEXT: MERGE_CANDIDATE
+ACTIVATION: INITIAL_V3_ACTIVATION
+RECONCILIATION_ID: <<exact rec_UUID; use the same reviewed ID for WRITE>>
+EXPECTED_UPSTREAM: origin/main
+EXPECTED_MAIN_SHA: <<exact target main SHA used to build candidate>>
+EXPECTED_CANDIDATE_SHA: <<exact candidate HEAD SHA>>
+EXPECTED_CONTRACT_SHA256: ABSENT
+WRITER_AUTHORITY: <<configured automation/integrator identity>>
+CANDIDATE_PROVENANCE: <<merge-queue/integration receipt>>
+PENDING_GUARD:
+RECOVERY_JOURNAL_PATH:
+RECONCILIATION_AUTHORIZATION:
+```
 
 ---
 
@@ -161,6 +186,7 @@ Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your comple
 MODE: CHECK | WRITE
 TARGET_PATH: .
 RUN_CONTEXT: MERGE_CANDIDATE
+ACTIVATION: INITIAL_V3_ACTIVATION | NONE
 RECONCILIATION_ID: <<exact rec_UUID; use the same reviewed ID for WRITE>>
 EXPECTED_UPSTREAM: origin/main
 EXPECTED_MAIN_SHA: <<exact target main SHA used to build candidate>>
@@ -181,6 +207,7 @@ Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your comple
 MODE: WRITE
 TARGET_PATH: .
 RUN_CONTEXT: MAIN_POST_MERGE
+ACTIVATION: NONE
 RECONCILIATION_ID: <<exact rec_UUID reviewed in CHECK>>
 EXPECTED_UPSTREAM: origin/main
 EXPECTED_MAIN_SHA: <<exact current synchronized main SHA>>

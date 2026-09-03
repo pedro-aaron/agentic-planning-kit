@@ -22,6 +22,8 @@ existing tool-specific agent entry points       # agentic-routes managed block o
 
 That workflow is `RECONCILE_MAIN`. Ordinary feature, analysis, project, INIT and execution sessions must never edit them. If the incoming candidate already changed a protected global path, fail with `BLOCKED_DIRECT_GLOBAL_EDIT`; do not bless the edit by re-rendering over it.
 
+`PLANNING_STATUS.md` is explicitly non-owned by this workflow. It is a route-3-only, non-protected root status artifact: not a projection, not a protected path, not a contract output and not a canonical reconciliation input. Never write, render, repair, include in expected outputs, secret-scan as a reconciliation output or content-verify it here; leave every one of its bytes untouched. Its route-3 managed-block boundaries do not grant reconciliation any ownership of the file. The generic candidate path-scope enforcement below is the only check that may mention its path.
+
 Git branch/worktree isolation is not the writer lock. Authority comes from protected `main`, an up-to-date integration candidate, required checks/merge queue, exact input hashes and this prompt's transaction. A local exclusive-create lock may prevent two processes in one checkout, but it is never a distributed lock and never overrides Git or queue state.
 
 ## Invocation contract
@@ -37,6 +39,7 @@ EXPECTED_UPSTREAM: origin/main
 EXPECTED_MAIN_SHA: <40-hex current protected-main commit>
 EXPECTED_CANDIDATE_SHA: <40-hex candidate commit; equals EXPECTED_MAIN_SHA in post-merge fallback>
 EXPECTED_CONTRACT_SHA256: <sha256 | ABSENT>
+ACTIVATION: INITIAL_V3_ACTIVATION | NONE
 WRITER_AUTHORITY: <automation/integrator identity declared by CONTRACT or INITIAL_V3_ACTIVATION>
 CANDIDATE_PROVENANCE: <merge-queue/integration receipt; NONE only in MAIN_POST_MERGE>
 PENDING_GUARD: <required-check/status identifier; required in MAIN_POST_MERGE>
@@ -105,7 +108,9 @@ Run in CHECK and repeat immediately before WRITE/RECOVER publication:
 8. Inventory linked worktrees, incomplete migration receipts and local reconciliation journals. Another active writer returns `BLOCKED_MAINTENANCE_ACTIVE`.
 9. Require `.agentic_planning/CONTRACT.json` hash to equal `EXPECTED_CONTRACT_SHA256`.
 
-When the contract is `ABSENT`, WRITE may perform `INITIAL_V3_ACTIVATION` only if there is no v1/v2 planning state, no legacy generated map/index that needs import and the invocation explicitly selects an authorized initial main reconciliation. A v2 workspace must use `PROMPT_MIGRATE_V2_TO_V3.md`. Initial activation creates a closed contract exactly conforming to `schemas/contract.schema.json`; optional policies not represented in that closed object live in repository protection configuration and this prompt.
+When the contract is `ABSENT`, `ACTIVATION` must be exactly `INITIAL_V3_ACTIVATION`. WRITE may then activate only if there is no v1/v2 planning state, no legacy generated map/index that needs import and the invocation explicitly selects an authorized initial main reconciliation. A v2 workspace must use `PROMPT_MIGRATE_V2_TO_V3.md`. Initial activation creates a closed contract exactly conforming to `schemas/contract.schema.json`; optional policies not represented in that closed object live in repository protection configuration and this prompt. If a contract exists, `ACTIVATION` must be `NONE`.
+
+Before an initial activation writes a contract, collect the `repository_id` from every active manifest's coordinator-local `planning_base[]` (`path: "."`) and local `write_scopes[]`; a local scope uses that coordinator identity, while a scope whose ID is declared by a nonlocal planning base remains external. The active planning sources must declare exactly one shared coordinator identity. Adopt that existing `repo_<UUID>` as `CONTRACT.repo_id`; never mint a replacement during activation. If any active manifest disagrees, or a coordinator-local planning-base and write-scope declaration disagree, stop before writing with `BLOCKED_REPOSITORY_IDENTITY_CONFLICT`. The same identity check applies whenever a contract exists: every active manifest's coordinator-local `planning_base[].repository_id` and local `write_scopes[].repository_id` must equal `CONTRACT.repo_id`, and a mismatch is that first-class blocking condition, not a downstream `WRITE_SCOPE_VIOLATION`.
 
 ### Multiple repositories
 
@@ -131,7 +136,7 @@ Read and hash, without trusting filenames or filesystem order:
 .agentic_planning/imports/legacy/**               # immutable v3 migration sidecars
 .agentic_planning/catalog/**                      # current main-owned baseline
 implementation/config evidence named by deltas
-current generated projections and managed blocks
+current generated projections and managed blocks (never `PLANNING_STATUS.md`)
 ```
 
 Legacy `_feature_*`, `_analysis_*` and `_project_*` trees are read-only evidence only through validated import sidecars. Never mutate or interpret them as native writers.
@@ -169,6 +174,10 @@ Every retry has a new attempt ID; no fixed output is overwritten. Closed receipt
 ## Write-scope and claim validation
 
 Each active revision declares repositories, `write_scopes[]`, `resource_claims[]` and an integration owner. For the v3 MVP, JSON scopes are structural exact files or normalized directory trees (`kind: exact|tree`); Markdown may display a tree as `directory/**`. Arbitrary glob semantics are forbidden.
+
+`PLANNING_STATUS.md` is not an output exclusion. If it changed in the incoming candidate, apply only this generic path-level check: its selected project's current manifest must declare the exact `PLANNING_STATUS.md` scope with the coordinator identity being adopted, or with `CONTRACT.repo_id` once a contract exists. Do not parse, render, hash or otherwise verify its content in reconciliation. A missing scope is `WRITE_SCOPE_VIOLATION`; the file remains route 3's responsibility.
+
+Human-owned inputs are not a scope exception. A greenfield target snapshot may adopt a human requirement/template/rule, but that input must arrive in a separate human-owned pull request which merges before the planning-source candidate. It is then already in `EXPECTED_MAIN_SHA`, carries no project/F00 write scope or claim, and is absent from the candidate diff. If a candidate introduces such an input alongside planning sources, do not broaden an agent scope or treat it as owned: split the human-input pull request, merge it first and rebuild the candidate. The ordinary undeclared-diff rule remains fail-closed.
 
 1. Compute the real product/planning-source diff between candidate and `EXPECTED_MAIN_SHA` for each repository.
 2. Exclude only outputs that this reconciliation itself will generate; an incoming change to one of them already failed preflight.
@@ -286,7 +295,7 @@ For a workspace with subproject instructions, use a correct relative link to the
 
 ### CHECK
 
-CHECK performs all discovery, validation, reduction and rendering in memory. It creates no lock, staging directory or receipt. Report the prospective source-set hash, catalog mutations, projection hashes, changed paths and blockers.
+CHECK performs all discovery, validation, reduction and rendering in memory. It creates no lock, staging directory or receipt. Report the prospective source-set hash, catalog mutations, projection hashes, changed paths and blockers. Do not read or report a `PLANNING_STATUS.md` hash/content as a reconciliation input or projection.
 
 ### WRITE staging
 
@@ -295,17 +304,17 @@ After exact authorization and a repeated clean preflight:
 1. Acquire `.agentic_planning/.local/reconcile-<rec-id>.lock` with atomic exclusive create. It coordinates only this checkout. A matching Git/queue authority is still mandatory; do not steal an orphan by timeout.
 2. Create `.agentic_planning/.local/reconcile/<rec-id>/` with separate `new/`, `preimages/` and `manifest/` areas.
 3. For each accepted revision in `PLANNED` or `RECONCILIATION_PENDING` that must become executable, stage one new schema-valid `RECONCILED` event with state `ACTIVE`, its current event as `parent_event_id`, `expected_state` equal to that current state, the accepted `revision_id`, `run_id: null`, `reconciliation_receipt_id` equal to this reconciliation ID, and a precise reason. Never modify an existing event.
-4. Render every prospective catalog file, index, map, blueprint projection and managed postimage from the source set plus staged registration events. Use canonical JSON, UTF-8, LF, normalized paths and deterministic ordering.
+4. Render every prospective catalog file, index, map, blueprint projection and managed-agent postimage from the source set plus staged registration events. Do not render, stage or derive a postimage for `PLANNING_STATUS.md`. Use canonical JSON, UTF-8, LF, normalized paths and deterministic ordering.
 5. Projection bytes must not depend on wall-clock time, filesystem enumeration, process ID or username. They may contain only the stable reconciliation receipt path when the format requires it. Re-running with the same canonical inputs and reconciliation ID produces byte-identical staging.
 6. Store exact preimages and an exact allowed-path/hash journal locally for crash recovery. Never expose preimage content or secrets in a receipt.
-7. Secret-scan staged bytes and changed managed blocks. Any possible secret blocks publication.
+7. Secret-scan staged bytes and changed managed-agent blocks. Any possible secret blocks publication. `PLANNING_STATUS.md` is not staged or scanned by this workflow.
 8. Stage the exact schema-valid reconciliation receipt as the final postimage (excluding its own hash from `output_hashes`), then validate links, schemas, applied-delta attribution, state reductions, map/index/catalog consistency and a second clean render against the complete staged tree. A second render must be byte-identical.
 9. Re-fetch/recheck protected main/candidate provenance. If main advanced, remove only this run's local staging/lock and return `STALE_MAIN_REQUEUE` with zero canonical writes.
 
 ### Publication
 
 1. Reconfirm no canonical input or undeclared path changed after staging.
-2. Publish staged registration events, catalog records and generated views using same-filesystem atomic replace/create operations, parent-safe ordering and the exact local journal allowlist. Never use broad delete/copy commands or globs.
+2. Publish staged registration events, catalog records and generated views using same-filesystem atomic replace/create operations, parent-safe ordering and the exact local journal allowlist. `PLANNING_STATUS.md` must not appear in that allowlist or be touched. Never use broad delete/copy commands or globs.
 3. Verify every published byte and ensure no undeclared path changed.
 4. Compare the published tree byte-for-byte with the already validated staged postimage, recheck managed boundaries and secret scan, and confirm the only missing postimage is the receipt. Do not run the applied-delta reducer on the intentionally receipt-less intermediate tree.
 5. Create `.agentic_planning/reconciliations/<rec-id>/receipt.json` **last**, byte-identical to the staged receipt and with exclusive-create semantics. It uses exactly `schemas/reconciliation-receipt.schema.json`, status `SUCCEEDED`, all repository commits, the prior successful receipt, generator version, sorted canonical input/output path hashes, applied delta IDs and an empty `error_codes` array. The receipt itself is not included in its own `output_hashes`.
@@ -342,6 +351,7 @@ Any of these means no new successful receipt and no claim of reconciled state:
 - descriptor/revision/event/run corruption or fork;
 - undeclared real diff or write-scope escape;
 - incompatible active claim/resource;
+- active-manifest/contract coordinator-repository-identity disagreement;
 - stale/double-applied/forked map delta;
 - unsupported planned-to-factual promotion;
 - missing cross-repository result;
@@ -382,4 +392,4 @@ Report:
 - idempotency result; and
 - post-merge pending-guard state when applicable.
 
-End with explicit confirmations: no product file was edited by reconciliation; no branch/worktree/merge/rebase/pull/commit/push was created; and global paths were written only under the exclusive `RECONCILE_MAIN` transaction.
+For `INITIAL_V3_ACTIVATION`, additionally report the adopted `CONTRACT.repo_id`, the active manifest IDs that supplied its coordinator-local identity and whether every coordinator-local `planning_base[]`/local `write_scopes[]` identity matched. End with explicit confirmations: no product file was edited by reconciliation; `PLANNING_STATUS.md` was left byte-for-byte untouched; no branch/worktree/merge/rebase/pull/commit/push was created; and global paths were written only under the exclusive `RECONCILE_MAIN` transaction.
