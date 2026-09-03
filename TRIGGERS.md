@@ -1,296 +1,168 @@
-# Triggers — Agentic Planning Kit v3
+# Triggers — Agentic Planning Kit 3.1
 
-Copy one block into an agent session started at the target workspace root, replace the parts in `<< >>`, and send it. Each referenced prompt is the complete task specification; the trigger supplies only what the agent cannot work out for itself.
+Copy-paste **one block** into a fresh code-agent session (Claude Code / Cursor / Codex). Start every
+session at the **workspace root** of the target workspace.
 
-## What you supply and what the agent derives
+- **First time in a clone: run 0 OPEN SESSION.** It creates `.agentic_planning/<username>/`, and
+  every later route writes inside it. Nothing else in the kit needs installing.
+- Existing code: run **1 INIT**. Use **4 ANALYZE BEFORE DEVELOP** for an evidence-backed codebase
+  question or capability assessment; when ready to plan implementation, run **2 CREATE FEATURE**
+  once per feature.
+- Empty or planning-only target: run **3A PROPOSE**, optionally repeat **3B REFINE**, then
+  explicitly run **3C MATERIALIZE**. Execute F00, then run INIT before using route 2 for F01+.
 
-These blocks ask for **what only you know**: what you want built, which thing you mean, what you decided. They do not ask for commit identifiers, content hashes or entity identifiers (IDs).
-
-Every prompt resolves those itself, from the repository and the planning tree, and stops to ask only when a value is genuinely ambiguous. If a prompt ever asks you to look up a hash by hand, that is a defect in the prompt, not a step you should perform.
-
-Where a block asks for a **name**, use the readable slug or a plain description — "login", "the checkout analysis", "the billing project". The agent resolves it to the underlying `ftr_`/`ana_`/`prj_` identity and tells you which one it picked before writing anything.
-
-Routes 5 and M are different on purpose: they are operator surfaces that write protected state, so they take exact values and exact authorization phrases. See the notes on each.
-
-Unfamiliar with a term used below — projection, claim, reconciliation, F00? See the [glossary](./README.md#glossary).
-
-## Sessions, and the names between them
-
-One session per route is enough — you do not need a fresh one per block. A route that has several phases is a conversation: run `PROPOSE`, read what came back, then send `REFINE` in the same session, as many times as you like. Start a fresh session when you begin a different route, or when you come back to a route later.
-
-That matters because the later blocks of a route refer to work the earlier ones created. In a continuing session you never retype a name: `REFINE` and `MATERIALIZE` act on the project that session just produced. A name appears in a block only when the session cannot know which thing you mean — route 1's `ENTITY`, which points at work some earlier route created, or a route 3 phase you are resuming days later.
-
-Every route that creates something names it back to you on completion, in the first line of its report. Note it down if you expect to come back.
-
-**If you no longer have it** — new session, new machine, next week, a colleague's work — you do not need to remember anything. The names are the directory names in the planning tree:
-
-```bash
-ls .agentic_planning/projects .agentic_planning/features .agentic_planning/analyses
-```
-
-Each entry reads `prj_<uuid>--<slug>`, `ftr_<uuid>--<slug>` or `ana_<uuid>--<slug>`. The slug is the name; use it. Or simply ask the agent in the session — "which projects exist here?" — since it reads the same tree. You never need to type the UUID.
-
-## Before you start
-
-Routes 1–4 run on a contributor branch. Refresh and integrate `origin/main` first, the way you would before any other work — the prompts read the resulting state themselves.
-
-Route 5 is the protected integration writer. Route M is a one-time exception: v2 migration runs directly on an already synchronized `main` and never creates or changes branches or worktrees.
+Every block starts with `USER:`. Put **your** username there — lowercase `[a-z0-9-]`, 2–32
+characters. It is a directory name, not an account: the kit never checks it against a remote, a
+commit author or a directory service. It decides where the route writes, and it is the only thing
+that keeps your planning from colliding with anyone else's. See [`SESSIONS.md`](./SESSIONS.md).
 
 ---
 
-## 1 · INIT / DISCOVER — record what the workspace actually contains
+## 0 · OPEN SESSION — create your planning session
 
-Use this to inspect the workspace and record findings against an entity you already created. Without an entity it still runs, read-only, and prints what it found.
+Run once per clone, per person. Takes a second and writes one file.
+
+```text
+Create my planning session for the Agentic Planning Kit, at the workspace root.
+
+USER: <<tu-username>>
+
+Create the directory .agentic_planning/<USER>/ and write exactly one file inside it,
+.agentic_planning/<USER>/SESSION.md, with: an H1 "Sesión de planeación — <USER>"; one line saying
+that every plan of this user lives under this directory and that no other user writes here; and
+three empty Markdown tables under the headings "## Proyectos", "## Features" and "## Análisis",
+each with the columns | Documento | Qué hace | Impacta | Status | Fecha |, plus the status legend
+"✅ Ejecutada · 🔄 En ejecución · 📝 Diseñada · ⛔ Superseded · 📌 Documento vivo".
+If .agentic_planning/README.md does not exist, create it with a short paragraph explaining that
+this directory holds one session directory per user, that the kit is in agentic-planning-kit/, and
+that `ls .agentic_planning/` is how you see who is planning what. Never regenerate it if it exists.
+Create nothing else. Write no product code. Do not touch another user's directory.
+Print the session path and confirm the two files.
+```
+
+---
+
+## 1 · INIT EXISTING PROJECT — discover/reconcile a factual `WORKSPACE_MAP.md`
 
 ```text
 Read agentic-planning-kit/PROMPT_INIT.md and execute it as your complete task spec.
 
-MODE: OBSERVE
-TARGET_PATH: .
-ENTITY: <<name of the feature, analysis or project this observation belongs to; leave empty for a read-only report>>
-DISCOVERY_SCOPE: <<the whole workspace, or name the subprojects you touched>>
+USER: <<tu-username>>
+
+Start at the workspace root. This trigger is for a project with real implementation signals. If the target is empty/planning-only, stop without writes and direct me to trigger 3A.
+First read any existing CLAUDE.md / AGENTS.md / README.md and reconcile with them. Map EACH subproject and compose. Capture stack/libs, commands/cwd, hard rules, contracts, data-store owner + access mode (`read-write|append-only|read-only|bootstrap-write/runtime-read-only|UNKNOWN`) + lifecycle boundary + principals/env-key names + allowed/forbidden operations, migration protocol only for writable phases, seams, conventions/principles and recipes. Also capture each subproject's QUALITY GATES: the deterministic test/lint/typecheck commands with exit-code semantics that code-writing feature steps must pass, quoted verbatim with cwd and parallel classification; a gate that does not exist is MISSING — never invent or aspirationally add one; coverage is observed-only (record the figure only if an existing command emits it, no thresholds); no mutation testing, no BDD runners. Write one WORKSPACE_MAP.md at the workspace root and mark map maturity factual only when its required claims are backed by implementation evidence.
+For safe multi-agent planning, also map command side effects and every shared mutable resource/single-writer hotspot: manifests/lockfiles, generated/cache/temp dirs, composition roots/registries, compose projects, fixed ports, volumes/networks, databases/services and reports. Record `shared_read|exclusive|UNKNOWN`, isolation keys/namespaces and same-checkout constraints; UNKNOWN means serialize, never assume safety.
+If invoked inside greenfield F00, reconcile the bootstrap claims: real evidence promotes PLANNED to EXISTING, drift becomes UNKNOWN, and unresolved planned work stays PLANNED. Use map maturity mixed until every foundation-required claim is factual; INIT alone never opens F01+.
+Then hydrate the agent entry points: inject the idempotent managed pointer block (between the agentic-routes markers) into CLAUDE.md and AGENTS.md (create them minimally if absent; in a workspace, each subproject's too), and into Cursor rules ONLY if the workspace already uses Cursor (a .cursor/ dir or .cursorrules) — for Cursor, write a dedicated .cursor/rules/agentic-routes.mdc, don't edit the user's rule files. Keep the block a pointer to the map, never a copy.
+Writes limited to WORKSPACE_MAP.md, those managed blocks, and — only inside an explicit F00 context — that F00's own reconciliation note under .agentic_planning/<USER>/. Do not write into any other user's session directory. Do not run build/test/migration commands or start servers; only read the commands they declare. Never echo secrets. Mark anything you can't determine under "Unknowns". Print a 3-line summary (map maturity, hydrated entry points, concurrency UNKNOWN count, quality gates found/MISSING per subproject) when done.
 ```
 
-The agent resolves `ENTITY` to its exact entity and revision, reads the current catalog state it needs to compare against, and confirms both back to you. If the name matches more than one entity, it lists the candidates and stops.
-
-Initial brownfield installation is performed by route 5 using this discovery as its factual input, not by letting a contributor overwrite `WORKSPACE_MAP.md`.
+`WORKSPACE_MAP.md` is the one shared planning file in the kit: it describes the repository, not
+anyone's plan. If two people run INIT around the same time, resolve it like any other file.
 
 ---
 
-## 2 · CREATE FEATURE — plan a feature
+## 2 · CREATE FEATURE — plan a feature → `.agentic_planning/<username>/_feature_<slug>/`
 
 ```text
 Read agentic-planning-kit/PROMPT_CREATE_FEATURE.md and execute it as your complete task spec.
 
-TARGET_PATH: .
+USER: <<tu-username>>
+
+Before anything, read WORKSPACE_MAP.md at the workspace root plus CLAUDE.md / AGENTS.md; if the map is missing, stale for the touched subprojects, or lacks their Quality gates tables, stop and ask me to run INIT (trigger 1) first. If .agentic_planning/<USER>/ does not exist, stop and tell me to run trigger 0.
+Plan only — write NO product code. Generate .agentic_planning/<USER>/_feature_<slug>/ with exactly: FEATURE_<SLUG>.md (scope, binding contract, fixed decisions, invariants — including "the gauntlet never weakens" —, a Mermaid execution graph, and a manual QA checklist in Spanish that I will execute myself, focused on acceptance: UX, flujos en dispositivo, visual — not correctness the gates already prove), 2–6 single-session step files under steps/ with explicit dependencies planned for maximum safe parallelism (steps without a dependency edge run in parallel; serialize only for overlapping writes or shared exclusive resources from the map — gate commands classified exclusive count as shared resources), each step carrying a one-line suggested model effort (tier low/medium/high + examples for Claude Code, Codex and Cursor), and TRIGGERS.md with ONE launcher per step grouped by parallel level — no orchestrator, no DAG json, no model-routing matrices, no rubrics, no verification/eval/fix cycles, no coverage thresholds, no mutation testing, no JSON artifacts of any kind.
+For every step that writes product code: derive BINDING TEST CASES from the feature contract (§3) into its Spec — the executor implements them, may add cases, never removes them — and list the subproject's Quality gates commands the step must run and pass BEFORE writing its handoff report, recording each command + exit code in the report along with every test file touched; existing tests are never deleted, skipped or loosened to pass. If a needed gate is MISSING in the map, add an explicit tooling-bootstrap step or record the degradation in the feature doc — never silently. Steps that write no product code skip gates.
+Each step grounds in the map (subproject, seam, recipe, blessed lib), writes only its declared scope, and finishes with a short handoff report outputs/NN_<slug>.md (≤40 lines). Acceptance QA is mine, done manually after the steps.
+Also register the feature in MY session index .agentic_planning/<USER>/SESSION.md: add its row at the top of the "## Features" table with status 📝 Diseñada, what it does and the impacted subprojects; flip any superseded feature of mine; and make the plan's final step responsible for updating the row to ✅ Ejecutada. Never write into another user's session directory and never create or edit a global index.
+Print a short summary when done: slug, step list with dependencies/parallel groups, touched subprojects, gates per step, assumptions.
+
 Feature to build:
-<<what a user should be able to do once this exists, who it is for, any constraint that matters, and what is explicitly out of scope>>
+<<escribe aquí lo que quieres que haga el feature>>
 ```
-
-Write it in plain language. The agent asks up to three clarifying questions if different readings would change the plan, then states its assumptions and proceeds.
-
-If the feature came out of an earlier analysis, say so in the text — "based on the checkout analysis" — and the agent links it.
-
-The route writes one `.agentic_planning/features/ftr_<uuid>--<slug>/` tree. It does not edit the map, index, catalog, root mirrors or managed agent blocks. Register the plan and its claims through integration before executing its product steps.
-
-Each generated step launcher supplies its own exact identifiers when the step runs. The eventual integration commit is bound later by `RECONCILE_MAIN`; a step never predicts it.
 
 ---
 
-## 3 · INIT NEW PROJECT — start a project from nothing
+## 3 · INIT NEW PROJECT — empty/planning-only target
 
-Three phases: propose a blueprint, refine it until you are happy, then authorize materialization. Run all three in the same session — each one builds on what the previous returned, so the name you need is already on screen.
+Three deliberately separate human-in-the-loop phases. 3A and 3B never imply authorization for 3C.
+You only ever type the project slug — the kit asks for no hashes and no identifiers.
 
-### 3A · PROPOSE
+### 3A · PROPOSE — show the base project plan
 
 ```text
 Read agentic-planning-kit/PROMPT_INIT_NEW_PROJECT.md and execute it as your complete task spec.
 
+USER: <<tu-username>>
 MODE: PROPOSE
-TARGET_PATH: .
 PROJECT_INTENT:
-<<what you want to build, who will use it, what it must and must not do, and any decision you have already made — stack, hosting, deadlines, things that are off the table>>
+<<describe el proyecto, los usuarios, los resultados esperados, las restricciones y las decisiones ya tomadas>>
 ```
 
-Describe the project the way you would to a new colleague. There is nothing to look up: this is the first revision, so there is no parent to point at, and the agent records the repository state itself.
-
-The agent produces an immutable blueprint revision and opens its report by naming the project it created, alongside what it assumed and up to three questions worth answering. Note that name down if you plan to come back later; within this session you will not need to type it again.
-
-### 3B · REFINE
-
-Repeat as often as you need. Each round produces a new immutable revision.
+### 3B · REFINE — apply human feedback (repeatable)
 
 ```text
 Read agentic-planning-kit/PROMPT_INIT_NEW_PROJECT.md and execute it as your complete task spec.
 
+USER: <<tu-username>>
 MODE: REFINE
-TARGET_PATH: .
+PROJECT: <<slug; omítelo si sigues en la misma sesión>>
 HUMAN_FEEDBACK:
-<<what you accept, reject, want changed, or want deferred — be explicit about decisions>>
+<<acepta, rechaza, cambia o pospone decisiones concretas; lo que no contestes sigue sin contestar>>
 ```
 
-You do not repeat the project name: the session already knows which project it just created. To build on an earlier revision instead, say which in the feedback. Only if you are returning in a new session, or the workspace holds more than one project, add a `PROJECT: <<name>>` line.
+Repeat 3B until readiness is `PASS` and the proposal matches the project you intend. A refinement
+that changes nothing semantically edits nothing and says so.
 
-### 3C · MATERIALIZE
-
-Materialization is irreversible: it creates immutable project sources and the F00 scaffold plan. It therefore takes two calls.
-
-First, ask for it. The agent runs the readiness check, shows you exactly what will be created, and prints the authorization phrase already filled in with the values it verified.
+### 3C · MATERIALIZE — freeze the plan and create F00
 
 ```text
 Read agentic-planning-kit/PROMPT_INIT_NEW_PROJECT.md and execute it as your complete task spec.
 
+USER: <<tu-username>>
 MODE: MATERIALIZE
-TARGET_PATH: .
-MATERIALIZE_AUTHORIZATION:
+PROJECT: <<slug; omítelo si sigues en la misma sesión>>
+MATERIALIZE_AUTHORIZATION: <<vacío la primera vez; MATERIALIZE <slug> la segunda>>
 ```
 
-Then read the summary. If you agree, send the same block again with the printed phrase pasted into `MATERIALIZE_AUTHORIZATION:`, unchanged. Anything else — a bare "yes", a reworded phrase, a phrase from an earlier run — is refused.
+Call it once with the authorization empty: the agent runs readiness, writes nothing, and prints what
+it will create. Call it again with `MATERIALIZE <slug>` to proceed.
 
-No project name here either: in a continuing session the agent knows which project it just refined, and the authorization phrase names the project explicitly anyway. From a new session, add a `PROJECT: <<name>>` line to the first call.
-
-> **After route 3**
->
-> **What you get:** the immutable planning tree, the F00 plan, and `PLANNING_STATUS.md` at the workspace root.
->
-> **What does not exist yet:** `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, the root `PROJECT_BLUEPRINT.md`, and the `CLAUDE.md`/`AGENTS.md` managed blocks. `validate` exits 1 until route 5 runs.
->
-> **Next:** integrate the sources through normal Git policy, then run route 5. Start with the following `CHECK` invocation; after review, repeat it as `WRITE` with the populated authorization. F00 never writes the global projections directly.
-
-```text
-Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your complete task spec.
-
-MODE: CHECK
-TARGET_PATH: .
-RUN_CONTEXT: MERGE_CANDIDATE
-ACTIVATION: INITIAL_V3_ACTIVATION
-RECONCILIATION_ID: <<exact rec_UUID; use the same reviewed ID for WRITE>>
-EXPECTED_UPSTREAM: origin/main
-EXPECTED_MAIN_SHA: <<exact target main SHA used to build candidate>>
-EXPECTED_CANDIDATE_SHA: <<exact candidate HEAD SHA>>
-EXPECTED_CONTRACT_SHA256: ABSENT
-WRITER_AUTHORITY: <<configured automation/integrator identity>>
-CANDIDATE_PROVENANCE: <<merge-queue/integration receipt>>
-PENDING_GUARD:
-RECOVERY_JOURNAL_PATH:
-RECONCILIATION_AUTHORIZATION:
-```
+3C freezes the blueprint and writes the F00 execution plan. It creates no product code. **F00 is
+executable the moment 3C finishes** — open its step triggers directly. F00 creates the subproject's
+first quality gates (test/lint config and smoke checks); then run INIT (trigger 1) for a factual map,
+do the manual QA, and plan F01+ with route 2 by pasting each intent's description as the feature text.
 
 ---
 
-## 4 · ANALYZE BEFORE DEVELOP — investigate before committing to a plan
+## 4 · ANALYZE BEFORE DEVELOP — inspect behavior or evaluate a proposed capability
 
 ```text
 Read agentic-planning-kit/PROMPT_ANALYZE_BEFORE_DEVELOP.md and execute it as your complete task spec.
 
-TARGET_PATH: .
+USER: <<tu-username>>
+
+Start at the workspace root. Read WORKSPACE_MAP.md and the applicable CLAUDE.md / AGENTS.md before analyzing. If .agentic_planning/<USER>/ does not exist, stop and tell me to run trigger 0. Analyze only: write no product code and do not create a feature plan. Ground codebase claims in path:symbol evidence and distinguish facts, intended behavior, external evidence, inferences, recommendations and unknowns.
+Answer the direct question, trace the relevant behavior end to end, and assess architectural, contract/data, security/tenancy, compatibility, operational, UX, performance and testing implications where material. Always perform a bounded current-research pass using primary sources. For technology or GitHub candidates, verify releases, meaningful maintenance, support, compatibility, security, governance and license; popularity alone is not evidence. Prefer the workspace's existing seams and blessed choices unless current evidence demonstrates a real gap.
+Write exactly one new report at .agentic_planning/<USER>/_analysis_<slug>/ANALYSIS_<SLUG>.md and leave every other pre-existing file untouched.
+Also register it in MY session index .agentic_planning/<USER>/SESSION.md: add ONE row at the top of the "## Análisis" table with the link, the question plus your headline recommendation, the report's status (✅ Conclusivo | ⚠️ Condicional | ⛔ Bloqueado, plus 🕓 when readiness is NEEDS_DECISION) and the date. Write only your own row, in your own session file; never touch another user's directory and never create a global index.
+Print the report path, main conclusion, highest risk, research status, next decision and confirmation that the index row was added.
+
 Analysis request:
-<<the behavior you want explained, the capability you are considering, or the decision you need evidence for>>
+<<describe la nueva funcionalidad, el comportamiento existente o la pregunta a investigar>>
 ```
-
-The agent records which repositories and commits it analyzed as part of the report, so the conclusions stay traceable to the state they were drawn from.
-
-The route writes one analysis tree. The global index and its "Derivó en" links are projections created by route 5.
 
 ---
 
-## 5 · RECONCILE MAIN — protected integration writer
+## Step execution
 
-This is an operator and automation surface, not a daily one. The exact commit identifiers, hashes and authorization phrase below are what make the protected write safe, and they are meant to be supplied by the integration automation that builds the candidate. If a person is typing them by hand, automate the lane instead.
-
-Preferred mode: run on the serialized merge candidate built from the latest `main`, so sources and projections integrate together.
-
-```text
-Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your complete task spec.
-
-MODE: CHECK | WRITE
-TARGET_PATH: .
-RUN_CONTEXT: MERGE_CANDIDATE
-ACTIVATION: INITIAL_V3_ACTIVATION | NONE
-RECONCILIATION_ID: <<exact rec_UUID; use the same reviewed ID for WRITE>>
-EXPECTED_UPSTREAM: origin/main
-EXPECTED_MAIN_SHA: <<exact target main SHA used to build candidate>>
-EXPECTED_CANDIDATE_SHA: <<exact candidate HEAD SHA>>
-EXPECTED_CONTRACT_SHA256: <<exact contract hash, or ABSENT only for authorized initial activation>>
-WRITER_AUTHORITY: <<configured automation/integrator identity>>
-CANDIDATE_PROVENANCE: <<merge-queue/integration receipt>>
-PENDING_GUARD:
-RECOVERY_JOURNAL_PATH:
-RECONCILIATION_AUTHORIZATION: <<empty for CHECK; for WRITE use: RECONCILE V3 GLOBALS CONTEXT MERGE_CANDIDATE MAIN <EXPECTED_MAIN_SHA> CANDIDATE <EXPECTED_CANDIDATE_SHA> ID <RECONCILIATION_ID>>
-```
-
-Post-merge fallback, only when candidate-time writes are unavailable:
+Each plan ships its own `TRIGGERS.md` with one launcher per step. Open each in a fresh session, in
+dependency order; steps in the same parallel group may run simultaneously. The shape is always:
 
 ```text
-Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your complete task spec.
-
-MODE: WRITE
-TARGET_PATH: .
-RUN_CONTEXT: MAIN_POST_MERGE
-ACTIVATION: NONE
-RECONCILIATION_ID: <<exact rec_UUID reviewed in CHECK>>
-EXPECTED_UPSTREAM: origin/main
-EXPECTED_MAIN_SHA: <<exact current synchronized main SHA>>
-EXPECTED_CANDIDATE_SHA: <<same SHA>>
-EXPECTED_CONTRACT_SHA256: <<exact contract hash>>
-WRITER_AUTHORITY: <<configured automation/integrator identity>>
-CANDIDATE_PROVENANCE: NONE
-PENDING_GUARD: <<active required-check/status identifier for this SHA>>
-RECOVERY_JOURNAL_PATH:
-RECONCILIATION_AUTHORIZATION: RECONCILE V3 GLOBALS CONTEXT MAIN_POST_MERGE MAIN <EXPECTED_MAIN_SHA> CANDIDATE <EXPECTED_CANDIDATE_SHA> ID <RECONCILIATION_ID>
+Read .agentic_planning/<username>/_feature_<slug>/steps/NN-<slug>.md and execute it as your complete task spec.
+Start at the workspace root. Before any code, read WORKSPACE_MAP.md, the layer CLAUDE.md/AGENTS.md it names, and the prior reports it lists. Write only within the step's declared scope. If the step writes product code: implement its binding test cases, then run its Gates commands and record each command + exit code in the report; never delete, skip or loosen existing tests to pass. Finish by writing outputs/NN_<slug>.md (≤40 lines).
 ```
 
-`MAIN_POST_MERGE` requires a repository-wide `RECONCILIATION_PENDING` guard and blocks later dependent integration until its receipt commits.
-
-For crash recovery, rerun the same block with `MODE: RECOVER`, the same IDs, SHAs and authorization, and the exact local `RECOVERY_JOURNAL_PATH`; recovery may only finish or restore that transaction.
-
----
-
-## M · MIGRATE V2 → V3 — main only
-
-A one-time operation that rewrites planning state directly on `main`. It takes exact values because a migration aimed at the wrong commit is not recoverable by rerunning it.
-
-Synchronize `main` with `origin/main` first, then read the commit you are migrating:
-
-```bash
-git rev-parse origin/main
-```
-
-Use that value for `EXPECTED_MAIN_SHA` in every block below. Run PLAN first — it is read-only.
-
-```text
-Read agentic-planning-kit/PROMPT_MIGRATE_V2_TO_V3.md and execute it as your complete task spec.
-
-MODE: PLAN
-TARGET_PATH: .
-EXPECTED_MAIN_SHA: <<output of git rev-parse origin/main>>
-EXPECTED_UPSTREAM: origin/main
-MIGRATION_ID:
-RECEIPT_PATH:
-MIGRATION_AUTHORIZATION:
-```
-
-After reviewing the plan, run APPLY with the proposed ID and exact authorization. The prompt redoes the full dry run before writing.
-
-```text
-Read agentic-planning-kit/PROMPT_MIGRATE_V2_TO_V3.md and execute it as your complete task spec.
-
-MODE: APPLY
-TARGET_PATH: .
-EXPECTED_MAIN_SHA: <<same SHA as in PLAN>>
-EXPECTED_UPSTREAM: origin/main
-MIGRATION_ID: <<mig_UUID returned by PLAN>>
-RECEIPT_PATH:
-MIGRATION_AUTHORIZATION: APPLY V3 MIGRATION ON MAIN AT <<EXPECTED_MAIN_SHA>> ID <<MIGRATION_ID>>
-```
-
-Rollback is permitted only before native v3 activity and requires the completed receipt:
-
-```text
-Read agentic-planning-kit/PROMPT_MIGRATE_V2_TO_V3.md and execute it as your complete task spec.
-
-MODE: ROLLBACK
-TARGET_PATH: .
-EXPECTED_MAIN_SHA: <<synchronized main SHA containing only the migration>>
-EXPECTED_UPSTREAM: origin/main
-MIGRATION_ID: <<exact migration ID>>
-RECEIPT_PATH: <<exact .agentic_planning/migrations/.../COMMIT.json>>
-MIGRATION_AUTHORIZATION: ROLLBACK V3 MIGRATION ON MAIN AT <<EXPECTED_MAIN_SHA>> RECEIPT <<RECEIPT_PATH>>
-```
-
-The migration never runs `checkout`, `switch`, `branch`, `worktree`, `pull`, `merge`, `rebase`, `commit` or `push`.
-
----
-
-## Local and continuous integration (CI) validation
-
-The command-line interface (CLI) is read-only unless `render --write` is explicitly used by the protected integration task:
-
-```text
-python agentic-planning-kit/tools/agentic_planning_v3.py validate --root .
-python agentic-planning-kit/tools/agentic_planning_v3.py claims --root .
-python agentic-planning-kit/tools/agentic_planning_v3.py render --root . --check
-python agentic-planning-kit/tools/agentic_planning_v3.py protected --root . --base origin/main
-```
-
-The protected integration lane uses the last command with `--integration` only after route 5 has staged exact global outputs. Use the exact final CLI syntax documented by `--help`; repository-host required checks remain authoritative.
+Two people executing steps that touch the same product files is an ordinary conflict — resolve it
+with your version-control system, the way you would for any other change. The kit's disjoint write
+scopes exist to make that rare, not to replace Git when it happens.

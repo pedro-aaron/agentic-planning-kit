@@ -1,268 +1,163 @@
-# Agentic Planning Kit v3
+# Agentic Planning Kit 3.1
 
-A portable, stack-agnostic kit for planning and executing agent work safely when several people use the same repositories through Git.
+A portable, stack-agnostic kit for planning features as a **small graph of self-contained
+single-session agent steps**, launched from individual copy-paste triggers — steps without a
+dependency edge between them run in parallel. Drop it into any workspace and it adapts through a
+generated workspace map.
 
-Source: <https://github.com/pedro-aaron/agentic-planning-kit>
+**Two properties define 3.1.**
 
-```bash
-git clone https://github.com/pedro-aaron/agentic-planning-kit.git
-```
+> **It knows nothing about Git.** No repository, remote, branch, commit, merge, protected path,
+> CODEOWNERS, CI or installer. Version control is yours; the kit is a planning method.
+>
+> **It knows about users.** Every planning artifact lives under `.agentic_planning/<username>/`,
+> so everyone works on `main` and no two people ever write the same file.
 
-It is installed over a **workspace** — the root holding every internal project of one solution — so that a feature spanning a migration, an application programming interface (API), a backend and a frontend is planned, claimed, executed and accepted as one unit. See [Workspaces](#workspaces).
+The concurrency model is one page: [`SESSIONS.md`](./SESSIONS.md). The copy-paste launchers are in
+[`TRIGGERS.md`](./TRIGGERS.md).
 
-V3 keeps v2's strongest guarantees — binding feature contracts, explicit dependency graphs, deterministic quality gates, immutable test expectations and human acceptance quality assurance (QA) — and changes the collaboration model:
+## Install
 
-> **Many writers create immutable, identity-owned sources. One protected integration writer regenerates global projections.**
+Copy this folder into your workspace. That is the whole installation.
 
-Feature branches never edit `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, the canonical catalog or managed agent-instruction blocks. They create globally identified manifests, plan revisions, events, run receipts and semantic map deltas. `RECONCILE_MAIN` validates those sources against the current integration candidate and is the only route allowed to update global views.
+## Routes
 
-## Glossary
-
-The kit uses a small vocabulary consistently. Everything else follows from these terms.
-
-| Term | Meaning |
-|---|---|
-| **Workspace** | The root that holds every internal project of one solution, plus the single `.agentic_planning/` tree that spans them. |
-| **Entity** | One planned thing with a globally unique identity: a feature (`ftr_`), an analysis (`ana_`) or a greenfield project (`prj_`). |
-| **Source** | An artifact an ordinary branch may create: descriptors, plan revisions, events, run receipts, map deltas. Sources are immutable once written. |
-| **Projection** | A generated global view rendered *from* sources: `WORKSPACE_MAP.md`, the catalog, the index, root blueprint mirrors, managed agent blocks. Only route 5 may write one. |
-| **Revision** (`rev_`) | An immutable snapshot of a plan or blueprint. Changing a plan appends a new revision; it never edits the old one. |
-| **Event** (`evt_`) | One immutable state transition, one per file. The current state of an entity is the result of replaying its events. |
-| **Reduced head** | That replay result — the entity's current state after applying every event in order. |
-| **Reconciliation** | The act of validating branch-created sources against the current `main` and regenerating the projections. Route 5 only. |
-| **Claim** | A declared write scope or shared resource an entity reserves, so two people cannot plan conflicting work over the same files, database or service. |
-| **Map delta** | A semantic, proposed change to the workspace catalog. `PLANNED` deltas record intent; reconciliation turns accepted ones into fact. |
-| **Gate** | A deterministic, machine-checkable quality check (build, tests, linters). Gates prove correctness; humans do acceptance QA. |
-| **Greenfield / brownfield** | Greenfield is an empty or planning-only root (route 3). Brownfield is a root that already has buildable product code (route 1, then 5). |
-| **F00** | The scaffold feature a greenfield materialization creates: the first executable plan that turns the blueprint into a real project skeleton. |
-| **Merge candidate** | The exact commit that combines the latest `main` with one change set, built by the merge queue and validated before `main` advances. |
-| **Run / attempt** | One execution of a plan step (`run_`) and one try within it (`att_`). Attempts are append-only, so a retry never overwrites an earlier report. |
-
-The rule that connects them: **many writers create sources; one protected writer renders projections.**
-
-## Prompts and tools
-
-| Route | File | Purpose | Writes |
+| Route | Prompt | Produces | When |
 |---|---|---|---|
-| M | [`PROMPT_MIGRATE_V2_TO_V3.md`](./PROMPT_MIGRATE_V2_TO_V3.md) | Plan, apply or roll back a v2 → v3 migration | Main-only planning control; never branches, commits or pushes |
-| 1 | [`PROMPT_INIT.md`](./PROMPT_INIT.md) | Discover factual workspace facts, quality gates and concurrency resources | Branch context: observations/deltas only; integration context: catalog through route 5 |
-| 2 | [`PROMPT_CREATE_FEATURE.md`](./PROMPT_CREATE_FEATURE.md) | Create a resource-aware feature plan pending registration | One globally identified feature tree |
-| 3 | [`PROMPT_INIT_NEW_PROJECT.md`](./PROMPT_INIT_NEW_PROJECT.md) | Propose, refine and materialize a greenfield project | Immutable project revisions/events and F00 sources |
-| 4 | [`PROMPT_ANALYZE_BEFORE_DEVELOP.md`](./PROMPT_ANALYZE_BEFORE_DEVELOP.md) | Produce an evidence-backed analysis | One globally identified analysis tree |
-| 5 | [`PROMPT_RECONCILE_MAIN.md`](./PROMPT_RECONCILE_MAIN.md) | Validate integration and regenerate global state | Protected catalog, map, index, mirrors and managed blocks |
-| CLI | [`tools/agentic_planning_v3.py`](./tools/agentic_planning_v3.py) | Command-line interface (CLI): validate artifacts/claims and deterministically render projections | Read-only by default; explicit `--write` for integration |
-| Setup | [`tools/install_kit.ps1`](./tools/install_kit.ps1) / [`.sh`](./tools/install_kit.sh) | Vendor the kit into a consumer repository and merge its Git fragments | Consumer repository; never pushes |
+| **0** | — (trigger only) | `.agentic_planning/<username>/SESSION.md` | once, after you clone |
+| **1** | [`PROMPT_INIT.md`](./PROMPT_INIT.md) | a **factual** `WORKSPACE_MAP.md`: per subproject stack/libs, commands, hard rules, contracts, data-store access modes, seams, conventions, recipes **and quality gates** — the deterministic test/lint/check commands with exit-code semantics, `MISSING` when absent | existing code; once, and after structural change |
+| **2** | [`PROMPT_CREATE_FEATURE.md`](./PROMPT_CREATE_FEATURE.md) | `<username>/_feature_<slug>/` — feature doc with binding contract, Mermaid execution graph and manual QA checklist; 2–6 step files with explicit dependencies, a suggested model effort each and, for code steps, **binding test cases + the gates they must pass**; one trigger per step | once per feature, after a factual map |
+| **3** | [`PROMPT_INIT_NEW_PROJECT.md`](./PROMPT_INIT_NEW_PROJECT.md) | `<username>/_project_<slug>/` — one blueprint, one decision table, and the F00 scaffold plan (F00 creates the subproject's first quality gates) | empty/planning-only target; propose → refine → materialize |
+| **4** | [`PROMPT_ANALYZE_BEFORE_DEVELOP.md`](./PROMPT_ANALYZE_BEFORE_DEVELOP.md) | `<username>/_analysis_<slug>/ANALYSIS_<SLUG>.md` — an evidence-backed report on current behavior or a proposed capability | before feature planning, when a decision needs analysis |
 
-Copy-paste launchers live in [`TRIGGERS.md`](./TRIGGERS.md). The normative data and Git rules live in [`CONTRACT_V3.md`](./CONTRACT_V3.md) and [`GIT_POLICY.md`](./GIT_POLICY.md). [`INSTALL.md`](./INSTALL.md) covers getting the kit into a consumer repository without nesting one Git repository inside another.
+Every trigger for routes 1–4 opens with `USER: <username>`. That field decides where the route
+writes, and it is the only piece of state the kit carries between sessions.
 
-## Canonical layout in a consumer workspace
+## Workflow
 
 ```text
-.agentic_planning/
-├── CONTRACT.json
-├── features/
-│   └── ftr_<uuid>--<slug>/
-│       ├── descriptor.json
-│       ├── plans/<revision-id>/
-│       │   ├── manifest.json
-│       │   ├── FEATURE.md
-│       │   └── execution_prompts/
-│       ├── events/<event-id>.json
-│       ├── runs/<run-id>/
-│       │   ├── <attempt-id>.json
-│       │   └── <attempt-id>.md
-│       └── map-deltas/<delta-id>.json
-├── analyses/ana_<uuid>--<slug>/...
-├── projects/prj_<uuid>--<slug>/...
-├── imports/legacy/...              # immutable v2 sidecars
-├── catalog/                        # RECONCILE_MAIN only
-├── reconciliations/<id>/receipt.json
-└── README.md                       # generated; never edit directly
+ANY WORKSPACE
+  0 OPEN SESSION → .agentic_planning/<username>/
 
-WORKSPACE_MAP.md                    # generated; planning-map contract 4
+EXISTING CODE
+  1 INIT → factual WORKSPACE_MAP.md (incl. quality gates)
+       → 4 ANALYZE → decision-ready report → optionally 2 CREATE FEATURE
+       → 2 CREATE FEATURE → step plan with execution graph + binding test cases + gates
+       → run each step trigger in dependency order (parallel branches simultaneously);
+         code steps pass their gates before finishing
+       → you perform the manual QA checklist (FEATURE doc §7)
+
+EMPTY / PLANNING-ONLY TARGET
+  3A PROPOSE → 3B REFINE (0..N) → 3C MATERIALIZE → execute F00 (creates the first gates)
+       → 1 INIT → route 2 for F01+
 ```
 
-Slugs and usernames are labels, never identities. New attempts always receive new run/attempt identifiers (IDs), so retries cannot overwrite evidence. The compact run path keeps full universally unique identifier (UUID) identities without exceeding common Windows/Git path limits; the receipt itself carries `step_id`.
+1. **Open your session** with route 0. It writes one file and takes a second.
+2. **Classify the target.** Existing implementation uses route 1; an empty or planning-only target
+   uses route 3A.
+3. **Analyze before developing (route 4, when needed).** For a codebase question or a consequential
+   new capability, route 4 does read-only local inspection plus bounded current primary-source
+   research and writes one report. It separates current behavior from recommendations, checks the
+   maintenance and fit of technology candidates, and never edits product code or plans a feature.
+4. **Plan a feature (route 2).** Requires a factual `WORKSPACE_MAP.md` with Quality gates tables for
+   the touched subprojects. The planner writes the feature doc, 2–6 step files with explicit
+   dependencies, a one-line suggested model effort each and — for every code step — the binding test
+   cases derived from the contract plus the gates it must pass, then a trigger per step.
+5. **Execute.** Open each step trigger in a fresh agent session, **in dependency order — steps with
+   no edge between them may run simultaneously** (the plan guarantees disjoint write scopes and
+   disjoint exclusive resources, gate commands included; you are the scheduler). Each step grounds
+   in the map, writes only its declared scope, implements its binding test cases, passes the gates
+   and records each command + exit code, and finishes with a handoff report `outputs/NN_<slug>.md`
+   (≤40 lines) that dependent steps read.
+6. **QA is yours.** After the last step you walk the manual QA checklist by hand — acceptance, not
+   correctness: the gates already proved the code against the binding cases. A defect becomes a new
+   ad-hoc fix or a new small plan. There is no automated evaluation or remediation loop.
 
-## Source ownership
+## What the method guarantees
 
-| Class | Examples | Writer |
-|---|---|---|
-| Entity-owned immutable sources | descriptors, plan revisions, ordinary state events, run receipts, map deltas | The feature/analysis/project branch that owns the entity ID |
-| Registration events | one `RECONCILED`/`ACTIVE` event per accepted revision | `RECONCILE_MAIN` after candidate validation |
-| Main-owned canonical state | `.agentic_planning/catalog/**` | `RECONCILE_MAIN` only |
-| Generated projections | `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, root blueprint mirrors, managed pointer blocks | `RECONCILE_MAIN` only |
-| Local ephemeral state | staging, caches, local locks, actor/session metadata | Local tool; ignored by Git |
-| Product code | source/tests/config within declared scopes | Feature steps and their integration owner |
+- **1 step = 1 agent session**, finished only when its short handoff report exists — and, for code
+  steps, only when the gates passed.
+- **Correctness is machine-checked.** Every code-writing step runs the subproject's declared quality
+  gates (deterministic commands, exit 0/1) before it finishes, and its report records the evidence.
+  No evaluator sessions — the gate is the same command a human would run.
+- **The bar is set by the planner, met by the executor.** Binding test cases live in the step spec,
+  derived from the feature contract in the planning session — the session that writes the code does
+  not get to decide what "tested" means.
+- **The gauntlet only ratchets up.** Each feature's tests join the suite every future feature must
+  pass; weakening an existing test is an invariant violation, visible in the step report and in a
+  seconds-long diff over test files.
+- **Planning cannot collide.** Every route writes under one user's directory. The only shared
+  planning file is `WORKSPACE_MAP.md`, which describes the repo rather than anyone's plan.
+- **Parallel-friendly and cheap.** Dependencies live in a human-readable Mermaid graph and
+  independent steps run concurrently — with no DAG json, no orchestrator, no concurrency contracts.
+  Model choice is one effort hint per step.
+- **Contracts defined once** (feature doc §3) and mirrored, never re-derived.
+- **Every step grounds itself** ("Before any code, read …") in the factual workspace map plus only
+  the prior reports it truly needs.
+- **New code imitates existing code**: each step names the seam (map §8), the recipe + exemplar
+  (map §9) and the blessed library (map §2). No second way to do what already has a way.
+- **Hard rules are respected**, not gamified: the map's imperative and read-only rules appear in the
+  feature's invariants and each touched step. Migrations run only against local/dev, never
+  production; read-only or sealed stores get no mutation plan.
+- **The map stays fresh** — only when the feature actually changed workspace structure, the last step
+  updates the touched `WORKSPACE_MAP.md` sections in place. No structural change, no map-sync step.
+- **QA belongs to the human.** Every plan ships a concrete, Spanish-language manual QA checklist
+  (action → expected result) focused on acceptance: UX, device flows, visuals.
 
-One-file-per-event makes independent additions merge naturally. A conflicting state transition is detected semantically through its expected parent; it is never settled by filesystem order, timestamps or last-writer-wins.
+## Design rules
 
-## Git collaboration workflow
+These are binding on the kit itself. A change that fails one is rejected regardless of its merit —
+they exist because the previous major version failed all eight and stopped producing usable plans.
 
-```text
-sync from origin/main
-  → plan with a global feature ID + claims
-  → register the plan through integration
-  → execute steps in isolated branches/worktrees with unique run IDs
-  → integrate prerequisites and fan-in hotspots
-  → merge queue rebuilds against the latest main
-  → RECONCILE_MAIN validates claims/diffs/deltas and regenerates views
-  → gates pass
-  → main advances
-```
-
-Contributors must update from `origin/main` before planning and again before requesting merge. That is required hygiene, but it is not the concurrency guarantee: `main` can advance after a local pull. Required checks and a serialized merge/integration queue must rebuild and revalidate the candidate against the actual latest `main`.
-
-No human or ordinary agent commits directly to protected global paths. A textually clean merge does not authorize a semantic conflict.
-
-Consumer repositories must merge the supplied `.gitignore` and `.gitattributes` fragments. The force-include rules for `.agentic_planning/**` are intentional: broad user/global ignores such as `runs/`, `events/` or `projects/` must never hide canonical receipts or events from Git. The protected check fails with `PLANNING_SOURCE_IGNORED` when it detects that condition.
-
-## Resource claims
-
-Every feature manifest declares product write scopes and non-file resources:
-
-| Combination | Result |
+| | Rule |
 |---|---|
-| `read` + `read` | Compatible |
-| Overlapping `write` scopes | Dependency, declared fan-in owner or block |
-| Same `exclusive` resource | Serialize/block |
-| Same `isolated` resource with distinct keys | Compatible |
-| Any `UNKNOWN` access | Treat as exclusive |
+| **R1** | **Git does concurrency.** The kit never implements merge, locking, protection, ordering or conflict detection. |
+| **R2** | **Every artifact is read by a human first.** No file exists only to be consumed by a tool. |
+| **R3** | **One fact, one place, one file.** A revision edits the document; it never copies it. |
+| **R4** | **No identifier a human cannot type.** Slugs and usernames. No UUIDs in paths or authorization phrases. |
+| **R5** | **No route ends in a state another route must unlock.** Every route's output is usable the moment it finishes. |
+| **R6** | **One format: Markdown.** No JSON schemas, no machine artifacts, no CLI to validate, no CI to maintain. |
+| **R7** | **The line budget is a contract.** Adding lines requires removing lines. |
+| **R8** | **It installs by copying a folder.** No subtree, no CODEOWNERS, no protected branches, no service identities. |
 
-Portable JavaScript Object Notation (JSON) path scopes are limited to `kind: exact` or `kind: tree`; human views may display a tree as `directory/**`. The validator normalizes separators, rejects traversal and checks that the real Git diff stays within the declared scope.
+### Line budgets
 
-Runtime isolation is separate from Git isolation. Compose projects, database (DB)/schema names, ports, volumes, caches, temporary directories and report locations use a namespace derived from feature/run IDs. A resource without a proven namespace stays exclusive.
+| Artifact | Cap |
+|---|---|
+| The whole kit | 8 files · 1 700 lines |
+| A route prompt | 300 lines (route 3: 350) |
+| `PROJECT_BLUEPRINT.md` | 400 lines · 10 sections |
+| `FEATURE_<SLUG>.md` | 200 lines |
+| A step file | 60 lines |
+| A handoff report | 40 lines |
+| Installation | 1 step |
 
-## RECONCILE_MAIN
+## Deliberately absent
 
-Route 5 is a protected integration task, not a contributor task. It:
+Evaluator sessions, rubrics, remediation loops, DAG json, orchestrators, coverage thresholds
+(coverage is *recorded* when a gate already emits it, never enforced), mutation testing, BDD
+runners — and, new in 3.1: entity UUIDs, event sourcing, compare-and-swap chains, catalogs,
+generated projections, reconciliation, protected paths, integration owners, merge queues,
+materialization authorization phrases, run/attempt receipts, JSON schemas, a validation CLI, CI
+templates and an installer.
 
-1. validates contract versions, IDs, immutable sources and causal events;
-2. compares all active claims and the real diff;
-3. revalidates map-delta evidence against the integration code;
-4. applies semantic deltas with expected-item hashes;
-5. reduces feature/analysis/project state deterministically;
-6. regenerates the workspace map and global index;
-7. updates only managed instruction blocks;
-8. writes a reconciliation receipt last;
-9. proves idempotency by producing no second diff.
+## Porting to another workspace
 
-The preferred integration surface is a merge candidate constructed from the latest `main`, so source changes and projections land together. If a hosting platform can only reconcile after merge, it must mark `RECONCILIATION_PENDING` and block subsequent dependent merges until the protected task completes.
+Copy this folder into the target workspace. For existing code run trigger 1; use trigger 4 whenever
+a question or proposed capability needs analysis; then run trigger 2 per feature. For an empty
+target start with 3A. Nothing in the prompts is specific to any workspace — implementation facts,
+gates included, flow through `WORKSPACE_MAP.md`.
 
-## Correctness and acceptance
-
-V3 preserves the v2 quality model:
-
-- The feature planner defines one binding contract.
-- Every code-writing step receives binding happy, negative and edge test cases.
-- Executors may add tests but never delete, skip or weaken required or existing tests.
-- Every applicable deterministic gate from the workspace catalog must pass with exit code 0.
-- Reports record commands, exit codes and every test file touched.
-- Human QA remains a Spanish action → expected-result checklist for user experience (UX), device flows, visuals and end-to-end acceptance.
-
-The planning system's own schemas, claim checks and deterministic rendering are also gates. Markdown instructions alone are not considered enforcement.
-
-## Existing workspace workflow
-
-For a v2 workspace:
-
-1. Synchronize local `main` with `origin/main` outside the agent session.
-2. Run migration route M in `PLAN` mode.
-3. Review blockers and the exact write/rollback manifest.
-4. Run route M in `APPLY` mode with the exact main Secure Hash Algorithm (SHA) commit identifier and authorization.
-5. Review and commit the migration changes directly on `main`; the prompt itself never commits or pushes.
-6. From then on, v2 trees are read-only and all new writes use v3.
-
-For a new brownfield v3 workspace, run route 1 through the protected integration lane to establish the factual catalog/map, then use routes 4 and 2.
-
-## Greenfield workflow
-
-```text
-3A PROPOSE
-  → optional 3B REFINE revisions
-  → 3C MATERIALIZE immutable project/F00 sources
-  → integration + RECONCILE_MAIN creates bootstrap projections
-  → execute F00 with unique run receipts
-  → integration + RECONCILE_MAIN establishes factual map
-  → route 2 for F01+
-```
-
-Greenfield file locks are local crash/double-run protection only. Cross-clone authority comes from registered claims and the serialized integration lane.
-
-## Workspaces
-
-The kit is meant to be installed once over a **workspace**: the root holding every internal project that makes up one solution, plus the single planning tree that spans them. Installing it per project is possible, but it gives up most of what the kit is for.
-
-```text
-<workspace>/
-├── .agentic_planning/          # one planning tree for the whole solution
-├── agentic-planning-kit/       # one vendored control plane
-├── WORKSPACE_MAP.md            # generated; spans every project
-├── CLAUDE.md / AGENTS.md       # managed pointer blocks
-├── database/                   # separate projects of one solution;
-├── api/                        # each may or may not be its own
-├── backend/                    # Git repository
-└── frontend/
-```
-
-Each of those directories is a separate project with its own lifecycle, build and deployment. Whether they are directories inside one Git repository or independent repositories is a topology decision covered below — either way they form one workspace.
-
-Separate projects are independently deployable, but they are not independent in behavior. That gap is exactly what a workspace closes:
-
-- **A feature is frequently one capability spread across several projects.** A single change lands as a database migration, an API endpoint, backend logic and a frontend view. Planned project by project it becomes several disconnected plans with no shared contract, no declared ordering and no single definition of done. Planned at workspace level it is one feature with one binding contract, explicit inter-project dependencies and one acceptance.
-- **Claims only detect the collisions the planner can see.** Two features touching the same API contract from different projects collide only if both are registered in the same planning tree. Split the tree and the conflict is discovered at merge time, or in production.
-- **Regression scope is a workspace fact, not a project fact.** A change inside the API can break the frontend's suite. Only a map covering every project can tell an executor which gates actually apply to a given change.
-- **Ordering is cross-project.** The migration must land before the code that depends on it. That sequencing can only be declared where both sides are registered.
-- **Analyses and evidence stay reusable.** Route 4 evidence gathered once about how the projects interact serves every later feature, instead of being rediscovered per repository.
-
-### Workspace topologies
-
-| Topology | Layout | Consequence |
-|---|---|---|
-| Single repository | One Git repository at the workspace root; projects are directories inside it | Strongest guarantees. One `main`, one merge queue, and a cross-project change is one atomic commit that continuous integration (CI) validates as a unit |
-| Multi-repository | Workspace root containing independent Git repositories | One configured coordinator repository owns `.agentic_planning/` and global projections. Manifests pin the planning base of every touched repository and receipts bind every validated integration commit |
-
-Prefer the single-repository topology when the projects genuinely ship together: Git already gives cross-project atomicity there, at no cost. The multi-repository topology buys that atomicity back with process, and only partially — completion is projected only after every repository is integrated, and a partial integration is `PARTIALLY_MERGED`/`BLOCKED`, never `COMPLETED`.
-
-The kit never pretends Git provides an atomic transaction across repositories.
-
-Installation placement for each topology is covered in [`INSTALL.md`](./INSTALL.md).
-
-## Migration and compatibility
-
-- Migration runs only on a clean, exactly synchronized `main` and never creates or changes branches/worktrees.
-- Legacy feature, analysis and project trees remain byte-identical.
-- Deterministic import sidecars give legacy entities stable IDs and provenance.
-- Legacy ambiguous state becomes `UNKNOWN_LEGACY` and serializes affected work.
-- V3 readers include legacy; v3 writers never emit legacy paths or mutate legacy rows.
-- After cutover, a v2 writer stops with `LEGACY_WRITER_DISABLED`.
-- Rollback is allowed only before native v3 activity and only for migration-owned paths whose hashes still match the receipt.
-
-## Files in this kit
+## Files
 
 ```text
 agentic-planning-kit/
-├── README.md
-├── INSTALL.md
-├── CONTRACT_V3.md
-├── GIT_POLICY.md
-├── PROMPT_MIGRATE_V2_TO_V3.md
-├── PROMPT_INIT.md
-├── PROMPT_CREATE_FEATURE.md
-├── PROMPT_INIT_NEW_PROJECT.md
-├── PROMPT_ANALYZE_BEFORE_DEVELOP.md
-├── PROMPT_RECONCILE_MAIN.md
-├── TRIGGERS.md
-├── schemas/
-├── tools/agentic_planning_v3.py
-├── tools/install_kit.ps1
-├── tools/install_kit.sh
-├── tests/
-└── templates/
-```
-
-This repository contains the kit only. Consumer migrations and product changes occur only when an operator installs the kit into a target workspace — see [`INSTALL.md`](./INSTALL.md) — and invokes the corresponding prompt.
-
-```bash
-git subtree add --prefix agentic-planning-kit https://github.com/pedro-aaron/agentic-planning-kit.git main --squash
+├── README.md                        ← you are here
+├── SESSIONS.md                      ← the concurrency model, in one page
+├── TRIGGERS.md                      ← copy-paste launchers for routes 0, 1, 2, 3A/3B/3C and 4
+├── PROMPT_INIT.md                   ← route 1: discover a factual workspace map incl. quality gates
+├── PROMPT_CREATE_FEATURE.md         ← route 2: a lean, parallel-friendly feature plan
+├── PROMPT_INIT_NEW_PROJECT.md       ← route 3: propose / refine / materialize an empty project
+├── PROMPT_ANALYZE_BEFORE_DEVELOP.md ← route 4: analyze behavior or a proposed capability
+└── LICENSE
 ```

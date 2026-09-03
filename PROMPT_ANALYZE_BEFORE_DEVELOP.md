@@ -1,460 +1,225 @@
-# PROMPT_ANALYZE_BEFORE_DEVELOP — Create a v3 evidence-backed analysis
+# PROMPT_ANALYZE_BEFORE_DEVELOP — Evidence-backed codebase analysis before implementation
 
-You are a senior software consultant and codebase analyst (Claude Code / Cursor / Codex) running at the root of a workspace that uses **Agentic Planning Kit v3**. Execute this file as your complete task specification.
+You are a senior software consultant and codebase analyst (Claude Code / Cursor / Codex) running at the **root of a workspace**. Execute this file as your complete task spec. You will explain an existing capability, evaluate a proposed capability, or do both. Your deliverable is a decision-ready analysis report — **never product code or a feature plan**.
 
-You explain an existing capability, evaluate a proposed capability, or do both. You produce an immutable, decision-ready analysis entity. You **never implement product code or create a feature execution plan**.
+Treat the free text after `Analysis request:` in the trigger as the question or capability to investigate. If it is empty, or if materially different interpretations would change the systems inspected or the recommendation, ask up to **3** crisp clarifying questions before writing the report. Otherwise state reasonable assumptions and proceed.
 
-Treat the free text after `Analysis request:` as the question. If it is empty, or materially different interpretations change the inspected systems or recommendation, ask at most **3** crisp clarifying questions. Otherwise state bounded assumptions and proceed.
-
-## Invocation contract
-
-The trigger supplies exactly two things:
-
-```text
-TARGET_PATH: .
-Analysis request:
-<free text: the behavior to explain, the capability to evaluate or the decision that needs evidence>
-```
-
-That is the entire human surface. Never ask the launcher for a commit identifier, a content hash or an entity identifier (ID), and never refuse to start because one was not supplied.
-
-## Input resolution — before you ask a human anything
-
-Derive every other value from the workspace, and say what you derived in your first response:
-
-- **Planning base.** Preflight step 5 already records each repository ID, root and exact `HEAD` as `planning_base`. That is the authoritative source of the analyzed state; a base commit is never a launcher input.
-- **Analysis identity.** Generate the `ana_`, `rev_`, `stp_`, `run_`, `att_` and `evt_` IDs yourself. A literal `AUTO` in any ID field means "generate one".
-- **Named prior work.** If the request refers to an existing feature, analysis or project by name or description, resolve it against `.agentic_planning/` and state which entity you matched before relying on it. If several plausibly match, list them and ask which.
-- **Catalog, claims and contract state.** Read them from the planning tree. They are never launcher inputs.
-- **Older triggers.** Accept `ANALYSIS_REQUEST:` as a synonym for `Analysis request:`. Accept and ignore `ANALYSIS_ID` and `BASE_MAIN_SHA` if an older trigger supplies them, resolving their content the way this section describes rather than trusting the supplied value.
-
-Reserve your questions for the request itself: what is being asked, about which systems, and to support what decision.
+The trigger supplies `USER: <username>`. Write your report and your index row under `.agentic_planning/<USER>/` and nowhere else. If that directory does not exist, stop and tell the operator to run trigger 0 (open session) first. **Never write into another user's session directory** and never create or edit a global index.
 
 ---
 
-## Outcome and layout
+## Goal
 
-Create exactly one collision-resistant native-v3 analysis:
+Answer the user's direct question from real codebase evidence, then go beyond it as an expert consultant: expose implications, risks, gaps, improvement opportunities, and the best-fit current practices or maintained technologies for this particular workspace.
 
-```text
-.agentic_planning/analyses/ana_<uuid>--<slug>/
-├── descriptor.json
-├── plans/
-│   └── rev_<uuid>/
-│       ├── manifest.json
-│       └── ANALYSIS.md
-├── events/
-│   ├── evt_<uuid>.json          # CREATED → PLANNED
-│   └── evt_<uuid>.json          # TRANSITIONED → COMPLETED or BLOCKED
-└── runs/
-    └── run_<uuid>/
-        └── att_<uuid>.json
-```
-
-Generate new lowercase UUID-prefixed IDs: `ana_`, `rev_`, `stp_`, `run_`, `att_` and two `evt_` IDs. The slug is kebab-case (≤5 meaningful words) and readability-only; duplicate slugs are safe.
-
-The analysis becomes visible in global indexes only after it is merged and `RECONCILE_MAIN` regenerates projections. This prompt never edits an index row.
-
----
-
-## V3 preflight — before any write
-
-1. Read `.agentic_planning/CONTRACT.json`, `CONTRACT_V3.md` and the closed schemas they reference.
-2. Require `writer_contract: "v3"`, `legacy_mode: "read_only"` and planning-map contract 4. If v2 artifacts exist without active v3, stop with `BLOCKED_V3_MIGRATION_REQUIRED` and point to `PROMPT_MIGRATE_V2_TO_V3.md`. Never dual-write a v2 report/index row.
-3. Read `DEVELOPMENT_PRINCIPLES.md` when present, generated `WORKSPACE_MAP.md`, exact catalog records/hashes, and applicable root/module `CLAUDE.md`, `AGENTS.md` and `README.md`.
-4. Read relevant contracts, source, schemas/migrations, config, dependency manifests, tests and operational docs.
-5. Record each analyzed repository ID, root and exact HEAD as `planning_base`. Record clean/dirty state in the report; for material uncommitted evidence, cite the file hash and label it as worktree evidence. Preserve all user changes.
-6. Use the map as navigation, not proof. Verify material claims against current source/schema/config/tests. Map drift does not prevent a useful analysis, but readiness for feature planning is `BLOCKED` until reconciliation of the touched catalog items.
-7. Read native-v3 and imported legacy planning artifacts only when relevant. Legacy paths are immutable.
-8. Confirm all generated entity/run/event destinations are absent. On collision generate fresh UUIDs; never overwrite.
-9. Secret-scan persisted content. Never expose environment values, credentials, private DSNs, tokens, customer data or private source excerpts.
-
-### Absolute write boundary
-
-The only authorized writes are new files under this one `ana_<uuid>--<slug>` root:
-
-- immutable descriptor;
-- immutable plan revision manifest and report;
-- one immutable run receipt;
-- the two parent-linked event files.
-
-Do not edit product code, tests, docs, config, dependencies, lockfiles, migrations, services, databases, Git history or:
+Produce exactly one new report:
 
 ```text
-WORKSPACE_MAP.md
-PROJECT_BLUEPRINT.md
-.agentic_planning/README.md
-.agentic_planning/CONTRACT.json
-.agentic_planning/catalog/**
-.agentic_planning/reconciliations/**
-CLAUDE.md / AGENTS.md / managed tool blocks
-.agentic_planning/_analysis_* or _feature_* legacy trees
-any feature/project entity
+.agentic_planning/<USER>/_analysis_<slug>/ANALYSIS_<SLUG>.md
 ```
 
-Do not create/switch branches or worktrees; do not pull, merge, rebase, commit, push, open a PR/issue or message external parties. Read-only Git inspection and public primary-source browsing are allowed.
+Derive a collision-free kebab-case `<slug>` of at most five words and its `UPPER_SNAKE` form. Never overwrite an existing analysis silently: if the natural path exists, add the analysis date and then a numeric suffix if needed.
 
-Do not install dependencies, run builds/tests/migrations, start servers or mutate local/external services. Repository search/read and static inspection are allowed. External queries use generic public technology terms, never private identifiers/code.
+## Analysis-only boundary
 
----
+The only authorized writes are **two**: the new report (plus any parent directory needed for it) and **its single row in your own `.agentic_planning/<USER>/SESSION.md`** — see "Analysis index registration" below. Nothing else.
+
+Do **not**:
+
+- implement, refactor, format, or otherwise edit product code;
+- edit tests, contracts, configuration, lockfiles, dependencies, migrations, documentation, `WORKSPACE_MAP.md`, or agent instruction files;
+- create a route-2 feature plan, or touch any row of the index other than your own;
+- install dependencies, run builds/tests/migrations, start servers, or mutate a local or external service;
+- create branches, commits, issues, pull requests, messages, or other external state;
+- expose `.env` values, tokens, credentials, DSNs, private source excerpts, or other secrets.
+
+Read-only inspection is allowed: searching and reading files, examining schemas and dependency declarations, read-only VCS status/history, and browsing public documentation or repositories. External searches must use generic public technology terms — never send private code, identifiers, customer data, or secrets to a search engine.
+
+## Read before analyzing
+
+Follow the workspace's mandatory instruction order. At minimum:
+
+1. Read `DEVELOPMENT_PRINCIPLES.md` when present.
+2. Read root `WORKSPACE_MAP.md`. If it is missing, stop without writes and direct the operator to trigger 1 (`INIT EXISTING PROJECT`).
+3. Read the applicable root and subproject `CLAUDE.md`, `AGENTS.md`, and `README.md`.
+4. Read the relevant canonical contracts, source, schemas/migrations, configuration, dependency manifests, tests, and operational documentation.
+5. If the target is under version control, note which revision you analyzed and whether the tree had uncommitted changes; do not disturb unrelated user changes.
+
+Use `WORKSPACE_MAP.md` as a route index, **not as proof**. Verify every material claim against the current implementation. If the map or prose documentation conflicts with source, schema, configuration, or tests, report the drift and its consequences; do not repair it. A stale map does not prevent a useful local analysis, but readiness for route 2 is `BLOCKED` until trigger 1 reconciles the touched area.
 
 ## Analysis method
 
-### 1. Classify and bound
+### 1. Classify and bound the request
 
-Choose:
+Classify it as one of:
 
-- `current_behavior` — explain/assess what exists;
-- `new_capability` — evaluate proposed functionality;
-- `mixed` — trace current behavior and evaluate change.
+- `current_behavior` — explain or assess what exists;
+- `new_capability` — assess a proposed functionality and its implications;
+- `mixed` — explain the current behavior and evaluate a change to it.
 
-State direct question, in/out of scope, assumptions, exact analyzed commits/worktree state and evidence that would change the conclusion. Answer the direct question first.
+State the question, scope, explicit non-scope, assumptions, and what evidence would change the conclusion. Answer the direct question first in the report; broader advice follows it.
 
-### 2. Establish current implementation
+### 2. Establish the current implementation
 
-Trace applicable behavior end to end:
+Trace the relevant behavior end to end, as applicable:
 
-- user/client/external entry point;
-- routing, orchestration, domain/application logic and dependency boundaries;
-- data flow, transitions, persistence, migrations, events, jobs and integrations;
-- contracts, validation, authorization, tenant isolation, privacy/trust boundaries;
-- errors, retries, idempotency, concurrency, edge cases and fallback;
-- observability, deployment/runtime assumptions and ownership;
-- tests/fixtures encoding intent;
-- callers, consumers and compatibility surfaces.
+- user/client or external entry point;
+- routing, orchestration, application/domain logic, and dependency boundaries;
+- data flow, state transitions, persistence, migrations, events, jobs, and integrations;
+- contracts, validation, authorization, tenant isolation, privacy, and trust boundaries;
+- errors, retries, idempotency, concurrency, edge cases, and fallback behavior;
+- observability, deployment/runtime assumptions, and operational ownership;
+- tests and fixtures that encode intended behavior;
+- all affected callers, consumers, and compatibility surfaces.
 
-Inspect adjacent and negative paths, not only name-matching files. For a new capability identify reusable seams, blessed dependencies, missing primitives, affected consumers and the smallest coherent attachment point. Source/tests prove repository behavior or intent, not production runtime facts.
+Inspect adjacent call sites and negative paths, not only the file whose name resembles the request. For a new capability, identify reusable seams, blessed libraries, missing primitives, affected consumers, and the smallest coherent attachment point. Do not infer production runtime behavior merely because source or a test says something should happen.
 
-Use Mermaid only when three or more relationships/branches/states become materially clearer.
+Use a Mermaid flow only when the relationship is materially clearer visually (for example, three or more components, branches, or state transitions). Do not add a diagram by default.
 
 ### 3. Label evidence and uncertainty
 
-Every material finding uses:
+Classify material findings with:
 
-- `[CODEBASE]` — source/schema/migration/manifest/config;
-- `[CONTRACT/TEST/DOC]` — declared intent, not runtime proof;
-- `[EXTERNAL]` — dated primary public source;
-- `[INFERENCE]` — conclusion from cited facts;
-- `[RECOMMENDATION]` — proposed direction;
-- `[UNKNOWN]` — unresolved evidence gap.
+- `[CODEBASE]` — source, schema, migration, manifest, or configuration evidence;
+- `[CONTRACT/TEST/DOC]` — declared or intended behavior that may not prove runtime state;
+- `[EXTERNAL]` — a current fact from a primary public source;
+- `[INFERENCE]` — a conclusion derived from cited facts;
+- `[RECOMMENDATION]` — proposed direction or improvement;
+- `[UNKNOWN]` — a gap that the available evidence cannot resolve.
 
-Cite local evidence as `path:symbol` with line when useful, and give each major finding `high|medium|low` confidence. Show conflicting evidence explicitly.
+Cite local evidence as `path:symbol` and add a line number when it materially improves precision. Give each major finding a confidence of `high`, `medium`, or `low`. When evidence conflicts, show both sides and never silently choose the more convenient one.
 
-### 4. Consultant implications
+### 4. Analyze implications like a consultant
 
-Assess only material dimensions; mark others `N/A`:
+Assess only the dimensions that materially apply, marking the rest `N/A` rather than padding:
 
-- architecture/responsibilities/interfaces;
-- API/event/data contracts, ownership, migration/rollback;
-- authentication, authorization, tenancy, security/privacy/compliance;
-- compatibility, rollout/coexistence/deprecation;
-- correctness, failure, reliability, concurrency/recovery;
-- performance, scalability, resources/cost;
-- deployment, operations, observability/support/incidents;
-- UX, accessibility, localization/offline;
-- testability, quality gates and missing evidence;
-- maintenance/team fit/vendor lock-in/licenses.
+- conceptual integrity, responsibilities, interfaces, and architectural boundaries;
+- API/event/data contracts, migrations, data ownership, and rollback;
+- authentication, authorization, tenancy, security, privacy, abuse, and compliance;
+- backward compatibility, rollout, coexistence, and deprecation;
+- correctness, failure modes, reliability, concurrency, and recoverability;
+- performance, scalability, resource use, and cost;
+- deployment, operations, observability, support, and incident impact;
+- UI/UX, accessibility, localization, and offline behavior;
+- testing strategy, testability, quality-gate coverage, and missing evidence;
+- maintenance burden, team fit, vendor lock-in, and license obligations.
 
-Stay connected to the request; do not turn it into an unrelated redesign.
-
----
+Look for improvements directly connected to the request, including important concerns the user did not explicitly ask about. Do not turn the report into an unrelated redesign or speculative wish list.
 
 ## Mandatory current research
 
-After local architecture is understood, perform a bounded current landscape scan for material practice/technology questions. Default to at most **3 serious candidates**.
+After understanding the local architecture, always perform a **bounded, current landscape scan** for the material best-practice and technology questions raised by the request. Research is advisory and can never redefine what the code currently does.
+
+Evaluate at most **3 serious external candidates** by default. Expand that set only when the request explicitly calls for a broader landscape or when every initial candidate fails a documented hard constraint. Depth of fit and maintenance evidence is more valuable than a long recommendation list.
 
 Use primary sources only:
 
-- official docs/standards;
-- official releases/support/EOL;
-- official registries;
-- upstream repositories/security/advisory pages.
+- official documentation and standards;
+- official release notes and support/EOL policies;
+- official package registries;
+- original upstream repositories and their security/advisory pages.
 
-For each time-sensitive claim record direct URL, retrieval date, stable version/tag and release date when relevant, plus the exact supported fact. Separate source fact from inference. Never claim `latest`, `supported`, `secure` or `maintained` from memory.
+For every time-sensitive claim, record the direct URL, retrieval date, selected stable version/tag when relevant, release date, and the exact claim supported. Separate the source fact from your inference. Never call something `latest`, `supported`, `secure`, or `maintained` from memory.
 
-For every serious external project record:
+If current sources are unavailable, continue the local analysis but mark the affected conclusions `[UNKNOWN] current evidence unavailable`. Do not replace missing current evidence with recollection.
 
-- official repository/archive state;
-- stable release model/date;
-- meaningful maintainer activity (not bot churn);
-- support/runtime cadence;
-- security policy/advisory path;
-- governance/issue responsiveness;
-- license obligations;
-- docs/migration/compatibility;
-- integration, operations, lock-in and ownership cost.
+### GitHub and external-project maintenance check
 
-Require two positive maintenance signals before calling a project maintained. Popularity metrics are context, never proof. Flag/reject archived, incompatible, insecure, unowned or disproportionately costly options.
+For each serious candidate, record:
 
-If current sources are unavailable, continue local analysis and mark affected conclusions `[UNKNOWN] current evidence unavailable`. Do not substitute recollection.
+- official repository and whether it is archived;
+- latest stable release/tag and date, or the project's documented release model;
+- recent **meaningful maintainer** activity (not bot churn alone);
+- release/support cadence and supported runtime/platform versions;
+- security policy, advisories, and response path;
+- maintainer/governance and issue/PR responsiveness signals;
+- license and obligations;
+- documentation, upgrade/migration path, and compatibility with the workspace;
+- integration, operational, lock-in, and long-term ownership costs.
 
----
+Require at least two independent positive maintenance signals before describing a project as maintained. A quiet mature project may still qualify only when stable-interface, support, and security evidence explain its low churn. Stars, forks, downloads, and popularity are context — **never proof of maintenance or fit**. Reject or clearly flag archived projects, incompatible licenses/runtimes, unresolved security concerns, unclear ownership, or an integration cost larger than the problem solved.
 
 ## Recommendation standard
 
-Compare in this order:
+There is no universally "best" technology; recommend the best fit for the observed constraints. Compare options in this order:
 
-1. keep current design/no change;
-2. reuse an existing seam/standard/blessed dependency;
-3. small internal extension preserving architecture;
-4. external project/service only when total complexity materially falls and maintenance is credible.
+1. keep the current design / make no change;
+2. reuse an existing seam, standard capability, or blessed dependency;
+3. make a small internal extension that preserves the architecture;
+4. adopt an external project or service only when it materially reduces total complexity and has a credible maintenance path.
 
-For viable options compare benefits, costs, risks, reversibility, compatibility, operations and ownership. Explain why the preferred option wins and material alternatives do not. Do not recommend novelty/rewrite/dependency by popularity.
+For each viable option, compare benefits, costs, risks, reversibility, compatibility, operational impact, and maintenance ownership. Explicitly explain why the preferred option wins and why material alternatives do not. Do not recommend novelty, a rewrite, or a dependency merely because it is popular.
 
----
+## Report contract
 
-## V3 artifact contract
+Write the report in the language of the user's request. Use this structure:
 
-Use closed active schemas exactly. Unknown JSON fields are invalid. These examples show the expected shape after the normative schema update.
+1. **Executive answer** — direct answer, preferred direction, analysis status (`conclusive | conditional | blocked`), and overall confidence.
+2. **Question, scope, and assumptions** — mode, in/out of scope, the state of the tree you analyzed, and assumptions.
+3. **Current behavior and evidence map** — end-to-end trace or, for a new capability, the current seams and missing pieces.
+4. **Findings** — facts, root causes/gaps, evidence class, confidence, and consequences.
+5. **Implications matrix** — relevant dimensions from the consulting checklist, with `N/A` where genuinely irrelevant.
+6. **Options and trade-offs** — include the smallest viable/no-new-dependency option and a no-change option when credible.
+7. **Current technology and GitHub research** — primary sources plus a maintenance/fit matrix for serious candidates; include rejected candidates and why.
+8. **Recommended direction** — rationale, constraints, incremental next decisions, and what not to do. This is analysis, not an execution plan.
+9. **Related improvements** — prioritized `must | should | could`, limited to findings connected to the request.
+10. **Risks, contradictions, and unknowns** — separate evidence gaps from risks and list what would resolve them.
+11. **Readiness / next human decision** — `READY_FOR_FEATURE_PLANNING | NEEDS_DECISION | BLOCKED | N/A`; when ready, include a concise intent that can be pasted into trigger 2 without pretending decisions are already implemented.
+12. **Source index** — local `path:symbol` references and direct official links with retrieval dates.
 
-### `descriptor.json`
+The report must clearly separate **as-is** behavior from **to-be** recommendations.
 
-```json
-{
-  "artifact_type": "entity_descriptor",
-  "schema_version": 3,
-  "entity_id": "ana_<uuid>",
-  "kind": "analysis",
-  "slug": "<slug>",
-  "title": "<title>",
-  "created_at": "<UTC RFC3339>",
-  "owner": "<actor or UNKNOWN>",
-  "provenance": "native_v3",
-  "initial_revision_id": "rev_<uuid>",
-  "source_analysis_ids": []
-}
-```
+## Analysis index registration — keep it hydrated
 
-Descriptor and revision are immutable. A later reassessment creates a new revision; state remains event-derived.
+`.agentic_planning/<USER>/SESSION.md` is **your own** index of plans and analyses — nobody else writes it, and it is not global. An analysis that is not in the index is invisible to the next session, which is how the same question gets investigated twice. Registering is therefore part of the deliverable, not an optional courtesy.
 
-### `plans/rev_<uuid>/manifest.json`
+After writing the report, add **one row at the top** of the index's `## Análisis` table (newest first). Create the section from the template below if your `SESSION.md` does not have one yet.
 
-An analysis has no product writes or mutable-resource claims:
+| Column | Content |
+|---|---|
+| `Análisis` | Markdown link to the report, labeled with the `<slug>` |
+| `Pregunta que responde` | One line: the question, plus the headline recommendation when there is one. No summary of the whole report |
+| `Estado` | The report's own analysis status + date: `✅ Conclusivo` · `⚠️ Condicional` · `⛔ Bloqueado`, plus `🕓` when readiness is `NEEDS_DECISION`. Say in a clause what the open decision is |
+| `Derivó en` | Links to features that cite this analysis, or `—` when none exists yet |
 
-```json
-{
-  "artifact_type": "entity_manifest",
-  "schema_version": 3,
-  "entity_id": "ana_<uuid>",
-  "revision_id": "rev_<uuid>",
-  "planning_base": [
-    {"repository_id": "repo_<uuid>", "path": ".", "commit": "<40-hex>"}
-  ],
-  "map_inputs": [
-    {"item_id": "cat_<uuid>", "sha256": "<64-hex>"}
-  ],
-  "write_scopes": [],
-  "resource_claims": [],
-  "depends_on": [],
-  "integration_owner": "<actor or UNKNOWN>"
-}
-```
+Rules:
 
-Entity-owned analysis artifacts are authorized by the entity path; they are not product write scopes.
+- **Write only your own row, in your own session file.** Never rewrite, reorder or restate other rows, never touch the `## Features` table — a different prompt owns it — and never open another user's `SESSION.md`.
+- **`Derivó en` is evidence, not intent.** List a feature only when that feature's document actually cites this analysis. A recommendation is not a derivation; leave `—` until a plan exists.
+- **The status is the report's, verbatim.** Do not upgrade `conditional` to `conclusive` in the index to make the row look finished.
+- When a later feature is planned from this analysis, route 2 owns adding its own feature row; whoever plans it should also fill this row's `Derivó en`.
 
-### Event chain
-
-First event:
-
-```json
-{
-  "artifact_type": "event",
-  "schema_version": 3,
-  "event_id": "evt_<uuid>",
-  "entity_id": "ana_<uuid>",
-  "event_type": "CREATED",
-  "state": "PLANNED",
-  "occurred_at": "<UTC RFC3339>",
-  "actor": "<actor or UNKNOWN>",
-  "parent_event_id": null,
-  "expected_state": null,
-  "revision_id": "rev_<uuid>",
-  "run_id": null,
-  "reconciliation_receipt_id": null,
-  "reason": "Analysis entity and immutable revision created"
-}
-```
-
-Completion event references the first event and run:
-
-```json
-{
-  "artifact_type": "event",
-  "schema_version": 3,
-  "event_id": "evt_<uuid>",
-  "entity_id": "ana_<uuid>",
-  "event_type": "TRANSITIONED",
-  "state": "COMPLETED",
-  "occurred_at": "<UTC RFC3339>",
-  "actor": "<actor or UNKNOWN>",
-  "parent_event_id": "evt_<created-uuid>",
-  "expected_state": "PLANNED",
-  "revision_id": "rev_<uuid>",
-  "run_id": "run_<uuid>",
-  "reconciliation_receipt_id": null,
-  "reason": "Decision-ready analysis completed; see immutable report and run receipt"
-}
-```
-
-If the report cannot satisfy its contract after writes begin, use `BLOCKED` and a precise reason; never claim completion.
-
-### Run receipt
-
-`runs/run_<uuid>/att_<uuid>.json` (`step_id` remains mandatory inside it):
-
-```json
-{
-  "artifact_type": "run_receipt",
-  "schema_version": 3,
-  "run_id": "run_<uuid>",
-  "attempt_id": "att_<uuid>",
-  "entity_id": "ana_<uuid>",
-  "revision_id": "rev_<uuid>",
-  "step_id": "stp_<uuid>",
-  "status": "SUCCEEDED",
-  "started_at": "<UTC RFC3339>",
-  "finished_at": "<UTC RFC3339>",
-  "validated_against": [
-    {"repository_id": "repo_<uuid>", "commit": "<40-hex>"}
-  ],
-  "artifacts": [
-    {
-      "path": ".agentic_planning/analyses/ana_<uuid>--<slug>/plans/rev_<uuid>/ANALYSIS.md",
-      "sha256": "<64-hex>",
-      "media_type": "text/markdown"
-    }
-  ]
-}
-```
-
-Every retry gets a new run and attempt path; never overwrite a receipt/report/event. A changed report conclusion creates a new revision.
-
----
-
-## Report contract — `ANALYSIS.md`
-
-Write in the user's language and clearly separate as-is evidence from to-be recommendation.
+Template for the section, when your `SESSION.md` does not have one yet:
 
 ```markdown
-# Analysis: <title>
+## Análisis
 
-**Analysis ID:** `ana_<uuid>`  
-**Revision ID:** `rev_<uuid>`  
-**Analyzed base:** `<repo-id>@<commit>`  
-**Mode:** `current_behavior | new_capability | mixed`  
-**Status:** `conclusive | conditional | blocked`  
-**Overall confidence:** `high | medium | low`
+Reportes de `agentic-planning-kit/PROMPT_ANALYZE_BEFORE_DEVELOP.md` (trigger 4): responden una pregunta con evidencia `path:symbol` + investigación de fuentes primarias. **No son planes** — no generan código ni pasos de ejecución; alimentan decisiones y, cuando procede, un feature posterior. La columna **Derivó en** solo lista features que citan el análisis explícitamente en su documento.
 
-## 1. Executive answer
-<Direct answer first; preferred direction and decisive constraint.>
-
-## 2. Question, scope and assumptions
-
-- In scope:
-- Out of scope:
-- Repository revisions/worktree state:
-- Assumptions:
-- Evidence that would change the conclusion:
-
-## 3. Current behavior and evidence map
-<End-to-end trace/current seams and missing primitives. Optional Mermaid only when useful.>
-
-## 4. Findings
-
-| # | Finding and consequence | Evidence | Confidence |
+| Análisis | Pregunta que responde | Estado | Derivó en |
 |---|---|---|---|
-| F1 | ... | `[CODEBASE] path:symbol` | high |
-
-## 5. Implications matrix
-
-| Dimension | Implication / N/A | Evidence or uncertainty |
-|---|---|---|
-| Architecture | ... | ... |
-
-## 6. Options and trade-offs
-
-| Option | Benefits | Costs/risks | Reversibility | Fit |
-|---|---|---|---|---|
-| No change | ... | ... | ... | ... |
-| Existing seam/small extension | ... | ... | ... | preferred/... |
-
-## 7. Current technology and maintenance research
-
-| Candidate | Official source/version/date | Maintenance signals | Security/license | Workspace fit | Decision |
-|---|---|---|---|---|---|
-| ... | ... | ... | ... | ... | ... |
-
-<Rejected candidates and reason. Every current claim has a retrieval date and direct primary URL.>
-
-## 8. Recommended direction
-<Why it wins, binding constraints, incremental decisions and what not to do. Analysis—not implementation steps.>
-
-## 9. Related improvements
-
-| Priority | Improvement | Evidence link |
-|---|---|---|
-| must/should/could | ... | F# |
-
-## 10. Risks, contradictions and unknowns
-
-- Risks:
-- Contradictions:
-- Unknowns:
-- Evidence/action that resolves each unknown:
-
-## 11. Readiness / next human decision
-
-**Readiness:** `READY_FOR_FEATURE_PLANNING | NEEDS_DECISION | BLOCKED | N/A`
-
-<When ready, one concise intent pasteable into the feature trigger. It remains a recommendation, not implemented state.>
-
-## 12. Source index
-
-### Local
-| Claim | `path:symbol[:line]` | Commit/worktree hash |
-|---|---|---|
-
-### External primary sources
-| Claim | Direct official URL | Retrieved | Version/release |
-|---|---|---|---|
+| [<slug>](./_analysis_<slug>/ANALYSIS_<SLUG>.md) | <pregunta + recomendación de cabecera> | <✅ Conclusivo \| ⚠️ Condicional \| ⛔ Bloqueado> (<YYYY-MM-DD>) | — |
 ```
 
-The report must never contain a mutable global status/index row. Future features cite this analysis via their descriptor `source_analysis_ids`; `RECONCILE_MAIN` derives “Derivó en” from those actual links.
+Add the matching legend line under the heading when creating the section:
 
----
-
-## Procedure and atomic completion
-
-1. Parse/classify/bound the request.
-2. Generate IDs and absent destination paths before persisting.
-3. Capture planning bases, worktree state and exact map-input item hashes.
-4. Trace local behavior and evidence.
-5. Perform bounded primary-source research.
-6. Compare options and form the decision/readiness.
-7. Render descriptor, manifest, report, receipt and parent-linked events outside protected globals; validate all closed schemas, IDs, links, hashes, UTF-8/LF and secret scan before publishing the entity files.
-8. Verify only the new analysis root changed and the report hash equals the receipt.
-9. Finish with path/IDs, one-sentence conclusion, highest risk, research status, next decision and: `global index will be regenerated by RECONCILE_MAIN after integration`.
+```markdown
+**Estado (análisis):** ✅ Conclusivo · ⚠️ Condicional (depende de decisiones abiertas) · ⛔ Bloqueado · 🕓 Esperando decisión humana. Un análisis **no se ejecuta**: se cierra cuando deriva en feature(s) o cuando el usuario lo archiva.
+```
 
 ## Completion criteria
 
-Open the summary with one plain line naming what you created, before any hash or path:
+The task is complete only when:
 
-```text
-Analysis: checkout-latency  (ana_7d02…)  — refer to it by this name in later routes
-```
+- the direct question is answered or explicitly unresolved;
+- the relevant flow, state, boundaries, and consumers are traced;
+- every material conclusion has evidence classification and confidence;
+- current external claims use dated primary sources;
+- each recommended external candidate passes the maintenance check or is explicitly rejected;
+- alternatives and implications are compared against the current architecture;
+- the recommendation, constraints, and next human decision are explicit;
+- assumptions, contradictions, risks, and unknowns remain separate;
+- only one new analysis report was written and every pre-existing file was preserved;
+- the analysis is registered with exactly one new row at the top of the `## Análisis` table in `.agentic_planning/<USER>/SESSION.md`, with no other row modified.
 
-A human who reads only that line must be able to find this analysis again without opening the tree.
-
-- Direct question answered or explicitly unresolved.
-- Relevant flow/state/boundaries/consumers traced.
-- Every material conclusion has evidence class and confidence.
-- Current external claims use dated primary sources; candidates pass maintenance check or are rejected.
-- Options/implications fit observed architecture.
-- Recommendation, constraints and next decision are explicit.
-- Risks, contradictions and unknowns are separate.
-- Descriptor, immutable plan/report, unique run/attempt receipt and two-event chain validate.
-- Manifest has exact planning bases/map hashes and empty product scopes/claims.
-- Only one new analysis entity changed; no legacy/product/global file changed.
-- No index row was directly written and no v2 artifact was dual-written.
-
-Finish with the compact completion summary required above.
+Finish the session with a short summary: report path, one-sentence conclusion, highest risk, research status, the next decision, and confirmation that the index row was added.

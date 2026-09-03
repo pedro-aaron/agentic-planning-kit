@@ -1,9 +1,0 @@
-# Merge into the consumer repository's .gitignore.
-# Force canonical planning sources back in when a global ignore contains broad
-# names such as runs/, events/ or projects/.
-!.agentic_planning/
-!.agentic_planning/**/
-!.agentic_planning/**
-.agentic_planning/.local/
-.agentic_planning/**/.local/
-.agentic_planning/**/*.tmp

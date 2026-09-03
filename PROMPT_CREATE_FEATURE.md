@@ -1,601 +1,220 @@
-# PROMPT_CREATE_FEATURE — Design and register a v3 feature plan
+# PROMPT_CREATE_FEATURE — Generate a lean feature plan under your session
 
-You are a code-planning agent (Claude Code / Cursor / Codex) running at the root of a workspace that uses **Agentic Planning Kit v3**. Execute this file as your complete task specification.
+You are a code agent (Claude Code / Cursor / Codex) running at the **root of a workspace**. Execute this file as your complete task spec. You will **plan a feature** — you write planning documents only, **never product code**.
 
-You create a feature entity and an immutable execution-plan revision. You write planning artifacts only: **never product code, tests, generated global views, catalog state, Git history or external state**.
+The trigger supplies `USER: <username>`. Every file you write goes under `.agentic_planning/<USER>/`. If that directory does not exist, stop and tell the operator to run trigger 0 (open session) first. **Never write into another user's session directory**, never create or edit a global index, and never read another user's plans to inform this one.
 
-Treat the free text after `Feature to build:` as the feature intent. If it is empty, or materially different interpretations would change the contract, touched repositories, write scopes or resource claims, ask at most **3** crisp clarifying questions. Otherwise state bounded assumptions and proceed.
+Treat the free text after "Feature to build:" in the trigger as the feature intent. If it is empty or one ambiguous line, ask up to **3** crisp clarifying questions before planning; otherwise proceed.
 
-## Invocation contract
+---
 
-The trigger supplies exactly two things:
+## Goal
+
+Produce a small, executable plan under `.agentic_planning/<USER>/_feature_<slug>/`: a **short set of self-contained single-session steps with explicit dependencies, each launched by its own trigger — steps without a dependency edge between them are planned to run in parallel**. The plan shows its execution graph (Mermaid) and every step carries a one-line suggested model effort. **Steps that write product code carry binding test cases derived from the feature contract and must pass the subproject's declared quality gates — deterministic commands with exit codes, from `WORKSPACE_MAP.md` — before they may finish.** There are no verification cycles, no evaluators, no rubrics, no remediation loops and no evidence trees — machines verify correctness through the gates; **acceptance QA is done manually by the user** after the steps finish, guided by a checklist you write into the feature doc. In one line: correctness belongs to machines; acceptance belongs to the user.
+
+## Inputs — read before planning
+
+1. **`WORKSPACE_MAP.md`** at the workspace root. If it is missing, clearly stale for the touched subprojects, **or lacks their Quality gates tables**, stop and tell the operator to run `PROMPT_INIT.md` (trigger 1) first. Ground everything you generate in it: commands/cwd, **quality gates**, hard rules, contracts, data-store access modes, seams, recipes, blessed libraries, conventions and user-facing copy language.
+2. **`CLAUDE.md` / `AGENTS.md`** (root and per-module) — layer conventions. Non-negotiable.
+3. **Your own prior features** under `.agentic_planning/<USER>/`, if any — match their document style.
+
+## The method
+
+A feature lives in `.agentic_planning/<USER>/_feature_<slug>/`:
 
 ```text
-TARGET_PATH: .
-Feature to build:
-<free text: the outcome, its users, the constraints that matter and the explicit non-scope>
+_feature_<slug>/
+├── FEATURE_<SLUG>.md   # canonical doc: scope, binding contract, decisions, graph, manual QA checklist
+├── TRIGGERS.md         # ONE copy-paste launcher per step; no orchestrator
+├── steps/
+│   ├── 01-<slug>.md    # step files — single-session, explicit dependencies
+│   └── NN-<slug>.md
+└── outputs/            # one short report per step (created by the executing sessions)
 ```
 
-That is the entire human surface. Never ask the launcher for a commit identifier, a content hash or an entity identifier (ID), and never refuse to start because one was not supplied.
+Four files and two directories. There is no per-feature README: the index table and the execution graph live in `FEATURE_<SLUG>.md` §4, once, and nothing mirrors them.
 
-## Input resolution — before you ask a human anything
+Binding principles:
 
-Derive every other value from the workspace, and say what you derived in your first response:
-
-- **Planning base.** Record each repository ID, root and exact `HEAD` yourself as `planning_base`, plus clean or dirty state. Never request a base commit from the launcher.
-- **Feature identity.** Generate the `ftr_`, `rev_`, `evt_`, `stp_`, `run_` and `att_` IDs yourself. A literal `AUTO` in any ID field means "generate one".
-- **Prior analyses.** If the intent text refers to earlier work by name or description — "based on the checkout analysis" — resolve it against `.agentic_planning/analyses/` and record the matched `ana_` ID as a source. Name your match explicitly. If several plausibly match, list them and ask which; if none does, say so and continue without a source link.
-- **Catalog, claims and contract state.** Read them from the planning tree. They are never launcher inputs.
-- **Older triggers.** Accept `FEATURE_INTENT:` as a synonym for `Feature to build:`. Accept and ignore `FEATURE_ID`, `BASE_MAIN_SHA` and `SOURCE_ANALYSIS_IDS` if an older trigger supplies them, resolving their content the way this section describes rather than trusting the supplied value.
-
-Reserve your questions for intent: what the feature must do, for whom, and what is out of scope. Those are the only answers a human actually has.
-
----
-
-## Outcome
-
-Create one collision-resistant v3 feature under:
-
-```text
-.agentic_planning/features/ftr_<uuid>--<slug>/
-├── descriptor.json
-├── plans/
-│   └── rev_<uuid>/
-│       ├── manifest.json
-│       ├── FEATURE.md
-│       └── execution_prompts/
-│           ├── README.md
-│           ├── 01-<slug>.md
-│           ├── NN-<slug>.md
-│           └── TRIGGERS.md
-├── events/
-│   └── evt_<uuid>.json
-├── runs/
-│   └── run_<uuid>/
-│       ├── att_<uuid>.md
-│       └── att_<uuid>.json
-└── map-deltas/
-    └── delta_<uuid>.json
-```
-
-The plan contains **2–6 cohesive, single-session steps**, an explicit dependency graph, binding test cases, deterministic quality gates and a Spanish manual acceptance checklist.
-
-Planning finishes with a `CREATED` event whose reduced state is `PLANNED`. Product execution is forbidden until this exact revision has been merged and an authorized `RECONCILE_MAIN` run has appended a `RECONCILED` event whose state is `ACTIVE`. Registration, global projections and catalog changes are not part of this prompt.
-
-> Branch-owned entities propose facts; `RECONCILE_MAIN` validates and registers them; machines prove correctness with gates; the user performs acceptance QA.
-
----
-
-## V3 preflight — before any write
-
-1. Read `.agentic_planning/CONTRACT.json` completely.
-2. Require its active writer contract to be v3, legacy mode to be read-only, and the planning-map contract to be `4`. Validate outputs against the schemas/enums named there. If a template below conflicts with a stricter repository schema, follow the repository schema while preserving every semantic field required here.
-3. If the contract is absent and v2 artifacts exist, stop with `BLOCKED_V3_MIGRATION_REQUIRED` and direct the operator to `PROMPT_MIGRATE_V2_TO_V3.md`. Never create a v2 feature as fallback.
-4. Read generated `WORKSPACE_MAP.md` and the records it references under `.agentic_planning/catalog/`. The map is a route view; catalog records and current implementation evidence are the inputs. A stale view, missing receipt or `UNKNOWN` touched area blocks planning pending `RECONCILE_MAIN`.
-5. Read root and applicable repository/module `CLAUDE.md`, `AGENTS.md`, `README.md` and canonical contracts.
-6. Read relevant native-v3 descriptors, revision manifests, events and active claim projections. Legacy imports/v2 trees are read-only historical inputs.
-7. Record each touched repository's stable ID, root, HEAD and upstream-main observation. Fetching remote-tracking evidence is allowed; never pull, merge, rebase, switch/create a branch/worktree, commit or push.
-8. Require each proposed `planning_base` to contain observed upstream `main`. If behind/diverged, stop with `BLOCKED_STALE_PLANNING_BASE` and have the operator synchronize outside this prompt.
-9. Preserve pre-existing worktree changes. If a destination exists or changes overlap it, generate another UUID; never overwrite/reuse a directory.
-10. Secret-scan persisted data. Store environment-variable names and redacted interfaces, never values, tokens, DSNs or credentials.
-
-### Write boundary
-
-This session may create only the new feature directory: one immutable descriptor, one immutable revision, and one initial append-only `CREATED`/`PLANNED` event.
-
-It must not edit or create:
-
-```text
-WORKSPACE_MAP.md
-PROJECT_BLUEPRINT.md
-.agentic_planning/README.md
-.agentic_planning/CONTRACT.json
-.agentic_planning/catalog/**
-.agentic_planning/reconciliations/**
-.agentic_planning/imports/**
-CLAUDE.md / AGENTS.md / tool rules
-product code, tests, config, lockfiles or migrations
-legacy .agentic_planning/_feature_* or _analysis_* trees
-```
-
-Those paths are projections/main-owned state. Only `RECONCILE_MAIN` writes them. There is **no dual-write** compatibility mode.
-
----
-
-## Identity and immutability
-
-- Generate lowercase RFC 4122 UUIDs with a cryptographically sound UUID facility.
-- IDs are `ftr_<uuid>`, `rev_<uuid>`, `stp_<uuid>` and `evt_<uuid>`. Future sessions use `run_<uuid>`, `att_<uuid>` and `delta_<uuid>`.
-- The kebab-case slug (≤4 meaningful words) is metadata only; duplicate slugs are valid.
-- Descriptor and revisions are immutable. State is event-reduced; never add mutable status to a descriptor or edit a revision in place.
-- Changed contract, graph, scope, claim or gate requires a new revision and a causal event that selects it; the prior revision remains immutable.
-- One event equals one new JSON file. Never append shared JSONL or overwrite an event.
-- Use UTC RFC 3339 timestamps. They are audit metadata, not identity/order authority.
-
----
-
-## Planning rules
-
-### Canonical contract
-
-`FEATURE.md` defines behavior once: shapes/enums/validation, transitions, authorization/tenancy, errors/idempotency/concurrency, compatibility/rollout, user copy, ownership and allowed store operations. Steps mirror it. A contradiction blocks execution and requires a new revision.
-
-### Two to six steps
-
-- Produce 2–6 cohesive product implementation steps; no evaluator/remediation/replan or padding step.
-- One step is one fresh session and normally one repository/subproject.
-- Split at stable contracts, repositories, independently testable concerns and real fan-in.
-- A step reads only declared predecessor receipts. Needing a parallel report creates an edge.
-- Parallelize only when write scopes are disjoint and resources/gates compatible. Serialize overlaps and exclusive/unknown resources.
-- A final fan-in step must own real integration work, never verification alone.
-
-### Binding tests and deterministic gates
-
-- Every product-writing step lists concrete happy, negative and edge cases derived from the feature contract.
-- Executors may add tests but never remove, skip, loosen, `xfail` or disable binding/existing tests.
-- Copy applicable gate commands, cwd, exit semantics and resource classification from catalog/map.
-- A `MISSING` gate becomes a narrow bootstrap step or a visible degradation; never invent gates/coverage thresholds.
-- Before `STEP_COMPLETED`, implement cases and run every gate. Fix own failures in-session; unrelated failures emit `STEP_BLOCKED` with evidence.
-- Automated correctness ends at gates. The user performs the Spanish manual acceptance checklist.
-
-### Closed write scopes
-
-Declare the feature union and exact step subset. In JSON, allowed scope forms are `{"kind":"exact","path":"file"}` or `{"kind":"tree","path":"directory"}`; human tables may render the latter as `directory/**`. No arbitrary globs, absolute paths, `..`, case aliases or repository-root catch-all.
-
-Protected planning globals are never feature scopes. Each receipt compares the attributable session diff with declared scope. Any outside path emits `STEP_BLOCKED_SCOPE_VIOLATION`; never widen an immutable manifest during execution.
-
-### Resource claims and runtime isolation
-
-Every shared implementation/gate resource uses a stable catalog resource ID and:
-
-- `read` — compatible only with `read`;
-- `exclusive` — serialize contenders;
-- `isolated` — concurrent only with distinct keys;
-- `unknown` — treated as exclusive.
-
-Cover DB/migrations, registries/routers, generated clients, lockfiles, live APIs, ports, Compose projects, volumes, caches, emulators and gate runners. At execution derive isolation from `feature_id + run_id`. Never share a fixed schema, project, cache, fixture or output. Without a proved isolation recipe, claim exclusive and add an edge.
-
-### Semantic map deltas
-
-If implementation changes a subproject, repository, gate, resource, seam, recipe, blessed library, store protocol or managed entry-point fact:
-
-- set `structural_delta_expected: true` on its step;
-- create a unique `map-deltas/delta_<uuid>.json` during that execution;
-- include stable target ID, expected input hash/create precondition, semantic operation, evidence hashes and revision/run/attempt IDs.
-
-Never edit catalog/map/index/blueprint/managed blocks. `RECONCILE_MAIN` validates and CAS-applies the delta against the merge candidate.
-
-### Registration before execution
-
-The planner emits `CREATED` with state `PLANNED` only. After review/merge, the latest-main candidate runs `RECONCILE_MAIN`, which validates hashes/scopes/active claims and appends `RECONCILED` with state `ACTIVE`, or rejects/serializes it.
-
-Every trigger carries feature/revision/step IDs, planning-base commits and required `REGISTERED_MAIN_SHA` plus `REGISTRATION_RECEIPT_ID` placeholders filled from the successful reconciliation receipt. Current execution HEAD must contain that SHA. A revision without a valid `RECONCILED`/`ACTIVE` event and matching successful receipt, or one that is stale, cancelled or superseded, does not execute.
-
-Before merge the operator synchronizes with upstream `main`. The merge queue is authoritative and reruns reconciliation if `main` advances after the user's pull.
-
----
+- **1 step = 1 agent session.** Each step declares its dependencies (`Depends on`), and **steps with no dependency edge between them are parallel by default — plan for maximum safe concurrency**. Serialize only when forced: overlapping write scopes, or a shared **exclusive resource** from the map's concurrency tables (shared DB / live-API evidence commands, Gradle, single-writer files) — **gate commands classified `exclusive` count as shared resources too**. The user opens each trigger in its own fresh session, respecting only the dependency edges — **the human is the scheduler**: no orchestrator sessions, no wave scripts, no machine-readable DAG files.
+- **Execution graph, human-readable.** `FEATURE_<SLUG>.md` §4 shows the dependency graph as a **Mermaid diagram** (parallel branches side by side) plus a `Depends on` column, and states in one line which steps may launch simultaneously and why that is safe (disjoint writes + disjoint exclusive resources, gates included). This *replaces* — never reintroduces — `execution-dag.json`.
+- **Suggested model effort per step.** Every step file carries a one-line `Suggested model effort`: a relative tier (`low` | `medium` | `high`) plus concrete examples for the three agent CLIs the operator uses — **Claude Code** (model + thinking effort), **Codex** (model + reasoning effort), **Cursor** (mode). It is a hint for the human launching the session, not routing machinery: no matrices, no per-step option tables, no fallback chains.
+- **Few steps.** Prefer 2–6. Split by subproject and cohesive concern; merge steps that a single ordinary session can finish. A tiny feature may be 1 step.
+- **Every step is self-contained** and starts with "Before any code, read …": the relevant `WORKSPACE_MAP.md` sections, the layer `CLAUDE.md`/`AGENTS.md`, and only the prior step reports it actually needs. A step may only require reports from its declared dependency edges — requiring a report from a parallel branch is a hidden edge (declare it or drop it).
+- **One subproject per product-writing step.** Cross-subproject features get one step per subproject, in dependency order — which is exactly what makes cross-subproject branches parallelizable once the shared contract step lands. Each step passes only *its* subproject's gates.
+- **Contracts are defined once** in `FEATURE_<SLUG>.md` §3 and mirrored by steps, never re-derived. A step that finds a mismatch shouts it at the top of its report and stops.
+- **Binding test cases are planned, not improvised.** For every step that writes product code, derive from the contract (§3) the concrete cases its tests must cover — happy path, negative and edge cases — and write them into the step's `Binding test cases` section. The executing session implements tests for exactly those cases; **it may add cases, never remove or weaken them**. This separation — the planner sets the bar in one session, the executor meets it in another — is what keeps the gauntlet honest.
+- **Gates, not agentic QA.** A step that writes product code must, **before writing its handoff report**: (1) implement its binding test cases; (2) run every applicable gate from the map's Quality gates table for its subproject; (3) record each gate command + exit code in the report. A gate failing because of the step's own change is fixed **in the same session**; a failure unrelated to the change stops the step, which reports it — no fix loops beyond the session, no evaluator sessions. Steps that write no product code (docs, planning, pure config) skip gates entirely.
+- **The gauntlet never weakens.** No step may delete, skip, `xfail`/disable or loosen an existing test unless `FEATURE_<SLUG>.md` §3 explicitly changed the contract that test encodes — and then the step must say so in its report. **Every test file touched is listed in the report**, so the operator can audit the diff over tests in seconds without reading product code.
+- **MISSING gates degrade loudly.** If a needed gate is `MISSING` in the map for a touched subproject, the plan either adds an explicit tooling-bootstrap step (installing/configuring the gate is then that step's whole scope) or records the degradation and its reason in `FEATURE_<SLUG>.md` §6 — never silently. Do not invent gates the map doesn't declare; do not require coverage thresholds, mutation testing or BDD runners.
+- **Imitate, don't invent.** Each step names the seam (`file:symbol`, map §8), the recipe + exemplar (map §9) and the blessed library (map §2) it follows. No second way to do what already has a way.
+- **Scope discipline.** The feature doc has an explicit *Out of scope*. A step that needs something out of scope stops and reports.
+- **Data-store safety.** Respect each store's access mode from the map. Migrations run only against local/dev, never production. Read-only/sealed stores get no mutation plan of any kind.
+- **Short handoff reports, nothing else.** Each step ends by writing `outputs/NN_<slug>.md` (≤40 lines: what changed, files touched, gate results — command + exit code —, tests added with a one-line claim each, test files touched, decisions taken, anything the next step must know). No `tests/`, `evals/`, `fixes/`, cache or cycle directories, no manifests, no scorecards, no JSON.
+- **Map-sync only when structure changed.** If the feature adds/moves a seam, recipe, blessed library, store protocol, subproject **or quality gate**, the last step updates the touched `WORKSPACE_MAP.md` sections in place (and entry-point pointer blocks for a new subproject). If nothing structural changed, there is no map-sync step at all. `WORKSPACE_MAP.md` is the one shared planning file; a step that edits it says so in its report.
+- **Session index registration — keep it hydrated.** `.agentic_planning/<USER>/SESSION.md` is **your own** index, written only by you. Its `## Features` table carries one row per feature (what it does, impacted subprojects, status), **newest first**. Statuses: `📝 Diseñada` · `🔄 En ejecución` · `✅ Ejecutada` · `⛔ Superseded`. Planning a feature **adds its row at the top** (status `📝 Diseñada`). The **final step of every plan** — the map-sync step when present, otherwise the last step — updates the row to `✅ Ejecutada (YYYY-MM-DD)` as part of its declared deliverables. If the new feature supersedes an older one of yours, flip that row to `⛔ Superseded` in the same edit. No plan ships without its row; no finished feature leaves its row stale.
+- **Manual QA checklist for the user.** `FEATURE_<SLUG>.md` §7 lists concrete actions + expected results the user performs by hand (app screens, API calls, DB queries), written **in Spanish** (user-facing). This replaces every automated *acceptance* artifact. The checklist focuses on what gates cannot prove — UX, device flows, visuals, end-to-end acceptance — and need not re-test correctness the binding test cases already cover.
+- Explicitly **do not generate**: `planning-basis.json`, `execution-dag.json`, model-routing matrices, work-class tags, acceptance rubrics, evaluator/remediation/replan steps, roadmap/readiness-ledger nodes, `HUMAN_VERIFICATION.md`, orchestrator/dispatch triggers, coverage thresholds or enforcement (record the figure only when a gate already emits it), mutation-testing requirements, BDD-runner setup, or any JSON artifact at all. The Mermaid graph in §4, the one-line effort hint per step, and the binding test cases + gates per code step are the **only** scheduling/routing/verification artifacts.
 
 ## Procedure
 
-1. Restate intent; derive title/slug, explicit scope/non-scope, outcome and source analysis IDs.
-2. Generate feature/revision/event and 2–6 step IDs; prove destinations absent.
-3. Resolve repositories, planning-base commits, catalog inputs/hashes, seams, recipes, dependencies, store modes and gates.
-4. Define the binding contract sufficiently to derive tests without redesign.
-5. Declare scopes/claims and compare active registered plans; model conflicts as dependencies/serialization.
-6. Decompose steps; prove safety for every parallel pair.
-7. Create descriptor, manifest, FEATURE, step prompts, execution index/triggers and initial event.
-8. Run the validator named by `CONTRACT.json`. Verify IDs, links, acyclic graph, scope union, claims, hashes, secret scan and only the new root changed.
-9. Print IDs/path, bases, graph/parallel groups, scopes, claims, gates, expected deltas, assumptions and: `not executable until RECONCILED/ACTIVE by RECONCILE_MAIN`.
+1. **Parse the intent.** Restate the feature in one sentence. Derive `<slug>` (kebab-case, ≤4 words) and `<SLUG>` (UPPER_SNAKE). If `.agentic_planning/<USER>/_feature_<slug>/` already exists, stop and ask whether to supersede it or pick another slug.
+2. **Scope against the map.** Identify the touched subproject(s), the seams/recipes/blessed libs per subproject, **the Quality gates table per touched subproject** (note any `MISSING` gate now — it becomes a bootstrap step or a §6 degradation note), and what is explicitly out of scope. Check data-store access modes for anything the feature writes.
+3. **Write `FEATURE_<SLUG>.md`** using the template below (≤200 lines). §3 (contract) is the spine — be concrete: the binding test cases of every code step derive from it.
+4. **Decompose into 2–6 single-session steps and assign dependencies for maximum safe parallelism**: check each pair of candidate-parallel steps for overlapping write scopes and shared exclusive resources (map concurrency tables — **including their gate commands**) before leaving them unconnected. For each code step, derive its binding test cases from §3 (happy path, negative, edge). Write each step file under `steps/` with the template below (≤60 lines each).
+5. **Write `TRIGGERS.md`** — one launcher block per step, in dependency order, grouped by parallel level.
+6. **Register the feature in `.agentic_planning/<USER>/SESSION.md`**: insert its row **at the top** of the `## Features` table with status `📝 Diseñada`, the one-line description and the impacted subprojects; flip any superseded feature of yours in the same edit. Make sure the plan's final step lists the `✅ Ejecutada` flip among its deliverables.
+7. **Print a summary**: slug, step list with dependencies/parallel groups, touched subprojects, gates per step, and assumptions.
 
 ---
 
-## Required JSON shapes
+## Template — `FEATURE_<SLUG>.md`
 
-Use the active closed schemas exactly. Rich step, gate and behavioral detail belongs in `FEATURE.md` and the step prompts, not as undeclared JSON properties.
+````markdown
+# Feature: <short title> — <one-line subtitle>
 
-### `descriptor.json`
+**Canonical feature document.** <2–4 sentences: what it delivers and what it explicitly does not do.>
 
-```json
-{
-  "artifact_type": "entity_descriptor",
-  "schema_version": 3,
-  "entity_id": "ftr_<uuid>",
-  "kind": "feature",
-  "slug": "<slug>",
-  "title": "<short title>",
-  "created_at": "<UTC RFC3339>",
-  "owner": "<actor/team identifier or UNKNOWN>",
-  "provenance": "native_v3",
-  "initial_revision_id": "rev_<uuid>",
-  "source_analysis_ids": []
-}
-```
+**Status:** design approved, pending execution.
+**Owner session:** `.agentic_planning/<USER>/`
+**Launchers:** [`TRIGGERS.md`](./TRIGGERS.md)
 
-No status/current-revision/claim/index field belongs here.
-
-### `plans/rev_<uuid>/manifest.json`
-
-```json
-{
-  "artifact_type": "entity_manifest",
-  "schema_version": 3,
-  "entity_id": "ftr_<uuid>",
-  "revision_id": "rev_<uuid>",
-  "planning_base": [
-    {
-      "repository_id": "repo_<uuid>",
-      "path": ".",
-      "commit": "<40-hex>"
-    }
-  ],
-  "map_inputs": [
-    {
-      "item_id": "cat_<uuid>",
-      "sha256": "<64-hex>"
-    }
-  ],
-  "write_scopes": [
-    {
-      "repository_id": "repo_<id>",
-      "kind": "tree",
-      "path": "src/example"
-    }
-  ],
-  "resource_claims": [
-    {
-      "resource_id": "<stable id>",
-      "mode": "isolated",
-      "isolation_key": "ftr_<uuid>",
-      "reason": "<why>"
-    }
-  ],
-  "depends_on": [],
-  "integration_owner": "<actor/team responsible for fan-in>"
-}
-```
-
-All step scopes/claims are subsets of the feature union.
-
-### Initial event
-
-```json
-{
-  "artifact_type": "event",
-  "schema_version": 3,
-  "event_id": "evt_<uuid>",
-  "entity_id": "ftr_<uuid>",
-  "event_type": "CREATED",
-  "state": "PLANNED",
-  "occurred_at": "<UTC RFC3339>",
-  "actor": "<actor identifier or UNKNOWN>",
-  "parent_event_id": null,
-  "expected_state": null,
-  "revision_id": "rev_<uuid>",
-  "run_id": null,
-  "reconciliation_receipt_id": null,
-  "reason": "Initial immutable feature plan; execution requires reconciliation"
-}
-```
-
-Do not predict the registration event ID, registered commit or receipt.
-
-### Execution-time map delta
-
-```json
-{
-  "artifact_type": "map_delta",
-  "schema_version": 3,
-  "delta_id": "delta_<uuid>",
-  "entity_id": "ftr_<uuid>",
-  "item_id": "cat_<uuid>",
-  "operation": "ADD",
-  "expected_item_hash": null,
-  "candidate": {
-    "artifact_type": "catalog_item",
-    "schema_version": 3,
-    "item_id": "cat_<uuid>",
-    "kind": "resource",
-    "title": "<title>",
-    "summary": "<evidence-backed summary>",
-    "status": "VERIFIED",
-    "attributes": [],
-    "relationships": [],
-    "evidence": [
-      {"path": "<repository-relative evidence path>", "sha256": "<64-hex>", "section": null}
-    ]
-  },
-  "evidence": [
-    {"path": "<repository-relative evidence path>", "sha256": "<64-hex>"}
-  ],
-  "evidence_commit": "<40-hex commit containing the evidence, or null until candidate reconciliation>"
-}
-```
-
-For `REPLACE`, set the exact current `expected_item_hash` and provide the complete successor candidate. For `REMOVE`, set that hash and `candidate: null`.
-
----
-
-## Template — `FEATURE.md`
-
-```markdown
-# Feature: <title>
-
-**Feature ID:** `ftr_<uuid>`  
-**Revision ID:** `rev_<uuid>`  
-**Planning base:** `<repository-id>@<commit>`  
-**Lifecycle:** `PLANNED`; execution requires a `RECONCILED` event with state `ACTIVE` for this revision.
-
-<What it delivers and explicitly does not.>
-
-## 1. Motivation and outcome
-<Evidence-grounded reasons and observable result.>
+## 1. Motivation
+<The why, numbered and brief. Ground in real files/behavior from WORKSPACE_MAP.md.>
 
 ## 2. Scope
+| Subproject / layer | Change |
+|--------------------|--------|
+| ...                | ...    |
 
-| Repository / subproject | Change | Product write scope |
-|---|---|---|
-| ... | ... | `path/**` |
+**Out of scope (not built):** <explicit list.>
 
-**Out of scope:** <list>.
+## 3. Canonical contract
+**Binding.** Steps code against it and never redefine it. The binding test cases of every code step derive from this section.
+<Concrete enums, schemas, validation rules, derivation tables. Specific, not hand-wavy.>
 
-## 3. Canonical binding contract
+## 4. Steps
 
-**Binding.** Steps/tests derive from this section. Contradiction requires a new revision.
-
-<Concrete schemas, validation, state/error/auth/concurrency/compatibility/copy rules.>
-
-## 4. Execution plan
-
-| # | Step ID | Step | Repository | Depends on | Effort | Gates | Writes |
-|---|---|---|---|---|---|---|---|
-| 01 | `stp_<uuid>` | ... | ... | — | medium | <gate IDs> | `path/**` |
+| # | Step | Subproject | Depends on | Suggested effort | Gates | Writes | Report |
+|---|------|-----------|------------|------------------|-------|--------|--------|
+| 01 | ... | ... | — | medium | <map gates or `n/a (no product code)`> | ... | `outputs/01_<slug>.md` |
 
 ```mermaid
 graph LR
-  S01["01 · stp_…"] --> S03["03 · stp_…"]
-  S02["02 · stp_…"] --> S03
+  S01[01 ...] --> S02[02 ...]
+  S01 --> S03[03 ...]
+  S02 --> S04[04 ...]
+  S03 --> S04
 ```
 
-**Parallel-safety proof:** <disjoint paths and compatible/isolated resources; exclusive gate staggering>.
+<one line: which steps may run in parallel (e.g. "02 ∥ 03 after 01") and why it is safe — disjoint write scopes + disjoint exclusive resources, gate commands included; state gate-run staggering when needed.>
 
-## 5. Write scopes and resource claims
+## 5. Fixed design decisions
+1. <decision + why, so an executing agent doesn't relitigate it.>
 
-| ID | Kind/mode | Steps | Isolation/serialization | Reason |
-|---|---|---|---|---|
-| ... | ... | ... | ... | ... |
+## 6. Invariants and anti-patterns
+1. **The gauntlet never weakens:** no existing test is deleted, skipped or loosened; the only exception is an explicit contract change in §3, which the step must report. Every test file touched appears in the step report.
+2. <must stay true across all steps — include the workspace map's hard rules that this feature touches.>
+<if a needed gate is MISSING in the map and no bootstrap step was added: record the degradation and its reason here, visibly.>
+- Anti-pattern: <a tempting wrong turn to avoid.>
 
-## 6. Fixed decisions, invariants and anti-patterns
-
-1. <Decision + rationale.>
-2. **The gauntlet never weakens:** no existing/binding test is deleted, skipped or loosened.
-3. **Scope stays closed:** unexpected work blocks rather than expands execution.
-4. **Globals are read-only:** no step edits map, index, catalog or projections.
-5. <Relevant workspace hard rule.>
-
-**Anti-patterns:** <prohibited shortcuts>.
-
-## 7. Structural deltas
-<Owning step, target ID, operation/evidence; or `None expected`.>
-
-## 8. QA manual (usuario)
-
-Después de que todos los pasos terminen y sus gates sean exitosos, el usuario realiza esta aceptación manual.
+## 7. QA manual (usuario)
+<En español. Lista concreta de acciones + resultado esperado, ejecutable a mano por el usuario al terminar todos los pasos: pantallas, llamadas API, queries. Sin automatización. Enfocada en aceptación — UX, flujos en dispositivo, resultado visual — no en la corrección que los gates y los test cases vinculantes ya probaron.>
 
 | # | Acción | Resultado esperado |
-|---|---|---|
-| 1 | ... | ... |
+|---|--------|--------------------|
+| 1 | ...    | ...                |
 
-## 9. Registration and Git integration
+## 8. References
+| Topic | Location |
+|-------|----------|
+| Workspace map | `WORKSPACE_MAP.md` |
+| Quality gates | `WORKSPACE_MAP.md` §4 (touched subprojects) |
+| Recipe(s) followed | `WORKSPACE_MAP.md` §9 + exemplar `file` |
+| <contract/seam> | `file` |
 
-- Do not execute before `RECONCILED`/`ACTIVE`.
-- Execution HEAD contains the successful reconciliation's validated main/candidate commit.
-- Synchronize with current upstream `main` before merge.
-- Merge queue revalidates claims/scopes/gates and runs `RECONCILE_MAIN`.
-- Humans/feature steps never edit global projections.
+_Created: <month year>. Origin: <one line>._
+````
 
-## 10. References
+## Template — a step file `steps/NN-<slug>.md`
 
-| Topic | Stable input |
-|---|---|
-| Contract | `.agentic_planning/CONTRACT.json` |
-| Catalog/map input | `<id + path + hash>` |
-| Seam/recipe/exemplar | `<id + file:symbol>` |
-| Source analysis | `ana_<uuid> / rev_<uuid>` or — |
-```
-
----
-
-## Template — step prompt
-
-```markdown
+````markdown
 # NN — <step title>
 
-**Feature ID:** `ftr_<uuid>`  
-**Revision ID:** `rev_<uuid>`  
-**Step ID:** `stp_<uuid>`  
-**Planning base:** `<repo-id>@<40-hex>`
-
 ## Goal
-<One-session deliverable.>
+<What this single session produces.>
 
 ## Depends on
-<Exact step IDs or `none`; read only their successful receipts.>
+<step numbers whose reports this step needs, or `none`. Steps not on this list run in parallel with this one.>
 
 ## Suggested model effort
-<`low|medium|high` — corresponding Claude thinking, Codex reasoning and Cursor mode; hint only.>
-
-## Mandatory registration and Git preflight
-
-1. Read contract and immutable revision.
-2. Fetch upstream evidence only; do not pull/rebase/merge/switch/commit/push.
-3. Find one valid `RECONCILED` event with state `ACTIVE` for this revision and its successful reconciliation receipt.
-4. Require launcher `REGISTERED_MAIN_SHA` and `REGISTRATION_RECEIPT_ID` to match that evidence, and require the SHA to be an ancestor of execution HEAD.
-5. Require active/non-superseded revision, valid claims and unchanged map-input hashes; otherwise create unique blocked attempt/event.
-6. Require a clean touched repository so the diff is attributable; preserve/report unrelated dirt.
-7. Generate fresh `run_<uuid>` and `att_<uuid>`; destination must not exist.
+<tier + one example per CLI, one line — e.g. `medium — Claude Code: Sonnet (thinking medium) · Codex: gpt-5-codex (reasoning medium) · Cursor: Auto`. A hint for the operator, not a requirement.>
 
 ## Before any code, read
+- `WORKSPACE_MAP.md` — <the specific sections/subproject this step needs, always including its Quality gates table when this step writes product code>.
+- <layer `CLAUDE.md`/`AGENTS.md`>.
+- `../FEATURE_<SLUG>.md` §3 (binding contract) <+ other sections if needed>.
+- <`../outputs/NN_*.md` prior reports actually needed, or `none`>.
 
-- `WORKSPACE_MAP.md` plus catalog input IDs/hashes, gates and resource recipes.
-- Applicable `CLAUDE.md` / `AGENTS.md`.
-- `FEATURE.md` §§3–6.
-- Exact predecessor receipts or `none`.
-- Seam/recipe/exemplar `file:symbol`.
-
-## Repository and allowed writes
-
-- Repository: `<repo-id>` at `<path>`.
-- Product scopes: <exact entries>.
-- Entity-owned outputs: new attempt report/receipt, event and declared delta.
-- Everything else, especially globals, is forbidden.
-
-## Runtime isolation and claims
-
-| Resource ID | Mode | Isolation/serialization |
-|---|---|---|
-| ... | ... | derive from `feature_id + run_id` / exclusive |
+## Subproject
+<exactly one; its cwd and commands from the map.>
 
 ## Spec
-<Concrete work tied to contract, seam, recipe and blessed dependency.>
+<What to build. Name the seam `file:symbol`, the recipe + exemplar file, the blessed library. Concrete and bounded.>
 
 ## Binding test cases
-
-1. <happy input/state → exact result>
-2. <negative input/state → exact error/non-effect>
-3. <edge/concurrency/compatibility → exact result>
+<Code steps only — write `not applicable (no product code)` otherwise. The concrete cases this step's tests MUST cover, derived from FEATURE §3: happy path, negative, edge. The executor may add cases, never remove or weaken these.>
+1. <case — input/state → expected outcome>
+2. <case>
+3. <negative/edge case>
 
 ## Out of scope
-<Prohibited work.>
+<what this step must NOT touch.>
 
-## Deterministic gates
+## Gates
+<Code steps: mandatory before the report. Non-code steps: `not applicable`.>
+<The subproject's Quality gates commands from the map, verbatim + cwd. Run them after implementing the spec and the binding test cases; record each command + exit code in the report. A failure caused by this step's change is fixed in this session; a failure unrelated to it stops the step — report, do not fix. Never delete, skip or loosen an existing test to pass a gate.>
 
-| Gate ID | Cwd | Exact command | Success | Resource mode |
+## Deliverables
+- <product files/paths>.
+- <code steps> tests implementing the binding test cases above, in the subproject's declared test location/style.
+- `outputs/NN_<slug>.md` — short handoff report (≤40 lines): what changed, files touched, **gate results (command + exit code)**, **tests added (one-line claim each) + test files touched**, decisions, notes for the next step.
+- <final step only> update the feature's row in `.agentic_planning/<USER>/SESSION.md` → `✅ Ejecutada (YYYY-MM-DD)`.
+````
+
+## Template — `TRIGGERS.md`
+
+One launcher **per step**, in dependency order. No orchestrator block, no cycle launchers. Group the launchers by parallel level when the graph has branches (e.g. "after 01, launch 02 and 03 together").
+
+````markdown
+# Agent session triggers — launch in dependency order; steps in the same parallel group may run simultaneously
+
+## 01 — <step title>
+
+```text
+Read .agentic_planning/<USER>/_feature_<slug>/steps/01-<slug>.md and execute it as your complete task spec.
+Start at the workspace root. Before any code, read WORKSPACE_MAP.md, the layer CLAUDE.md/AGENTS.md it names, and the prior reports it lists. Write only within the step's declared scope. If the step writes product code: implement its binding test cases, then run its Gates commands and record each command + exit code in the report; never delete, skip or loosen existing tests to pass. Finish by writing outputs/01_<slug>.md (≤40 lines).
+```
+
+## NN — <step title>
+
+```text
+<same shape, per step>
+```
+
+After the last step: the user performs the manual QA checklist in `FEATURE_<SLUG>.md` §7. Any defect found becomes a new ad-hoc fix request or a new small feature plan — there is no automated remediation loop.
+````
+
+## Template — the `## Features` row in `.agentic_planning/<USER>/SESSION.md`
+
+Never create a global index. Edit only your own session file, inserting new features at the top of its table and flipping statuses in place. User-facing prose in Spanish.
+
+````markdown
+## Features
+
+**Status:** ✅ Ejecutada · 🔄 En ejecución · 📝 Diseñada (pendiente de ejecución) · ⛔ Superseded · 📌 Documento vivo.
+
+| Documento | Qué hace | Impacta | Status | Fecha |
 |---|---|---|---|---|
-| ... | ... | ... | exit 0 | ... |
-
-Fix own failures only; unrelated failures block. Never weaken tests/gates.
-
-## Structural delta
-<`none` or semantic operation/target/evidence. Never edit globals.>
-
-## Completion protocol
-
-1. Capture binding cases and gates with cwd/command/exit code.
-2. Verify attributable diff is inside scopes plus entity-owned outputs.
-3. Write new `runs/run_<uuid>/att_<uuid>.md` (≤40 lines).
-4. Write the adjacent schema-valid immutable `runs/run_<uuid>/att_<uuid>.json`; record richer registration, changed-path, test, gate, claim/isolation and delta evidence in the Markdown report. `step_id` remains mandatory inside the receipt.
-5. Append a `TRANSITIONED` event with state `ACTIVE` for a successful non-final step or `BLOCKED` for a blocked attempt, the attempt's `run_id`, the causal parent, `reconciliation_receipt_id: null` and a precise reason.
-6. Only a real final fan-in transitions the entity to `COMPLETED`, and only after all successful dependency receipts; never claim manual acceptance.
-7. Never update a global/status row or overwrite a run/attempt/event.
-```
-
----
-
-## Execution index and trigger templates
-
-`execution_prompts/README.md`:
-
-```markdown
-# Execution prompts — <feature title>
-
-**Feature:** `ftr_<uuid>` · **Revision:** `rev_<uuid>`  
-**Hard stop:** launchers are invalid until `RECONCILE_MAIN` makes this revision `ACTIVE`. Copy its validated commit and receipt ID into each launcher.
-
-| # | Step ID | Prompt | Depends on | Repository | Effort | Gates |
-|---|---|---|---|---|---|---|
-| 01 | `stp_<uuid>` | [01 — ...](./01-<slug>.md) | — | ... | medium | ... |
-
-```mermaid
-graph LR
-  S01["01 · stp_…"] --> S03["03 · stp_…"]
-  S02["02 · stp_…"] --> S03
-```
-
-**Parallel-safety proof:** <paths, claims and gate resources>.
-
-Each session creates a unique run/attempt. After all steps, the user performs `FEATURE.md` §8; no automated remediation loop.
-```
-
-`execution_prompts/TRIGGERS.md` contains one launcher per step grouped by dependency level—no orchestrator/DAG/shared output. The registration placeholder is intentionally unresolved; execution with it must stop.
-
-```markdown
-# Step launchers — ftr_<uuid> / rev_<uuid>
-
-## Parallel level 1
-
-### 01 — <title> · stp_<uuid>
-
-```text
-Execute .agentic_planning/features/ftr_<uuid>--<slug>/plans/rev_<uuid>/execution_prompts/01-<slug>.md as the complete task spec.
-
-FEATURE_ID: ftr_<uuid>
-REVISION_ID: rev_<uuid>
-STEP_ID: stp_<uuid>
-PLANNING_BASE: <repo-id>@<40-hex>
-REGISTERED_MAIN_SHA: <REQUIRED: copy from successful reconciliation evidence>
-REGISTRATION_RECEIPT_ID: <REQUIRED: rec_<uuid>>
-
-Start at workspace root. Stop if the placeholder remains, registration cannot be proved, or HEAD does not contain REGISTERED_MAIN_SHA. Generate fresh run_<uuid>/att_<uuid>; read only predecessor receipts; write only declared scopes; use runtime isolation; implement binding tests; run gates; verify diff; write a new report, receipt and terminal event. Never edit WORKSPACE_MAP.md, index, catalog, blueprint, managed blocks or immutable/legacy artifacts.
-```
-
-<Repeat concrete launchers per step/parallel level.>
-
-After implementation the user performs Spanish QA. Before merge synchronize with upstream main; the queue revalidates latest-main and runs `RECONCILE_MAIN`.
-```
-
----
-
-## Run receipt minimum
-
-```json
-{
-  "artifact_type": "run_receipt",
-  "schema_version": 3,
-  "run_id": "run_<uuid>",
-  "attempt_id": "att_<uuid>",
-  "entity_id": "ftr_<uuid>",
-  "revision_id": "rev_<uuid>",
-  "step_id": "stp_<uuid>",
-  "status": "SUCCEEDED|FAILED|CANCELLED",
-  "started_at": "<UTC RFC3339>",
-  "finished_at": "<UTC RFC3339>",
-  "validated_against": [
-    {"repository_id": "repo_<id>", "commit": "<40-hex>"}
-  ],
-  "artifacts": [
-    {"path": "<repository-relative path>", "sha256": "<64-hex>", "media_type": "<MIME type>"}
-  ]
-}
-```
-
-The short Markdown report is for humans; JSON receipt is audit evidence. Never persist secret output.
-
----
-
-## Explicit exclusions
-
-Do not generate v2 paths, fixed `outputs/NN_*.md`, mutable status tables, `planning-basis.json`, `execution-dag.json`, routing matrices, evaluator/remediation/replan steps, rubrics/scorecards, verification cycles, coverage thresholds, mutation/BDD mandates, orchestrator triggers or committed locks.
-
-A local lock coordinates one checkout only. Cross-clone authority comes from registered claims, branch protection and merge queue.
-
-## Completion criteria
-
-Open the summary with one plain line naming what you created, before any hash or path:
-
-```text
-Feature: password-reset  (ftr_4a81…)  — refer to it by this name in later routes
-```
-
-A human who reads only that line must be able to find this feature again without opening the tree.
-
-- Exactly one new v3 feature root; descriptor/revision/event validate and agree.
-- 2–6 steps, acyclic graph, concrete binding contract/tests/gates.
-- Exact planning commits/map hashes; closed scopes exclude globals.
-- Claims cover implementation/gates with isolation or serialization.
-- Parallel safety is proved; structural work declares semantic deltas.
-- Triggers carry entity IDs, planning bases and registration placeholder.
-- No product, legacy or global projection changed.
-- No run/attempt/event can overwrite another.
-- Initial state is only `PLANNED`, and the summary states execution awaits `RECONCILED`/`ACTIVE` plus a successful reconciliation receipt.
-
-Finish with feature/revision IDs/path, bases, graph, scopes, claims/isolation, gates, deltas, assumptions, validation and registration requirement.
+| [<slug>](./_feature_<slug>/FEATURE_<SLUG>.md) | <una línea> | <subproyectos> | 📝 Diseñada | YYYY-MM-DD |
+````
