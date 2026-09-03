@@ -1,8 +1,8 @@
 # PROMPT_INIT_NEW_PROJECT — Design and materialize native v3 greenfield planning sources
 
-You are a code agent running at the workspace root. Execute this file as the complete specification for exactly one selected greenfield phase. This prompt creates planning sources only. It never implements the product and never writes a global projection.
+You are a code agent running at the workspace root. Execute this file as the complete specification for exactly one selected greenfield phase. This prompt creates planning sources only. It never implements the product or writes a global projection. Its only root-level output is the non-protected, route-3-owned `PLANNING_STATUS.md` block described below.
 
-Agentic Planning Kit v3 is multi-user and event-sourced: project identity is a prefixed UUID, design revisions are immutable, state changes are one-file-per-event, and materialization creates a native F00 feature plan. `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, `.agentic_planning/catalog/**`, root `PROJECT_BLUEPRINT.md` and managed agent blocks are generated later by the exclusive `PROMPT_RECONCILE_MAIN.md` workflow.
+Agentic Planning Kit v3 is multi-user and event-sourced: project identity is a prefixed UUID, design revisions are immutable, state changes are one-file-per-event, and materialization creates a native F00 feature plan. `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, `.agentic_planning/catalog/**`, root `PROJECT_BLUEPRINT.md` and managed agent blocks are generated later by the exclusive `PROMPT_RECONCILE_MAIN.md` workflow. `PLANNING_STATUS.md` is different: it is a route-3-only human status artifact, not a projection and never an authority exception for those global paths.
 
 ## Invocation contract
 
@@ -45,7 +45,7 @@ Resolve every value the launcher did not supply, and state what you resolved bef
 
 - **Project identity.** In `PROPOSE`, generate the `prj_` ID and slug. In `REFINE`/`MATERIALIZE`, resolve the project in this order: (1) an explicit `PROJECT` value, matched against directory slugs and descriptor titles under `.agentic_planning/projects/`; (2) the project this same session already created or refined; (3) the only project in the tree, when exactly one exists. If none of those settles it, list the candidates and stop. Report the exact ID you resolved before writing. Never guess between two projects, and never carry a session's project across a change of `TARGET_PATH`.
 - **Parent revision, event and state.** Replay the project's events to its reduced head and take the latest accepted revision as the parent. Compute the manifest, blueprint and state hashes yourself from the canonical bytes on disk. If the human's feedback asks to build on an earlier revision, use the one they named and say so.
-- **Repositories.** Record each repository ID, root and exact `HEAD` yourself. A repository with no commits records `NO_COMMITS`; a repository with no `origin/main` records `NO_UPSTREAM`. Neither blocks a greenfield proposal — an empty repository is the normal starting condition for this route.
+- **Repositories.** Record each repository ID, root and exact `HEAD` yourself. When a contract exists, its `repo_id` is the coordinator workspace identity. When it does not, reduce native events and inspect only active manifests' coordinator-local `planning_base` entries (`path: "."`) and local `write_scopes`; a scope declared by a nonlocal planning base is external, and prior immutable revisions do not participate. Reuse their one shared `repository_id`, or generate one `repo_<UUID>` only when none exists. That generated ID is the workspace repository identity, not a project-local convenience; use it consistently in this project's coordinator-local `planning_base` and local `write_scopes`, record it in the completion response and `PLANNING_STATUS.md`, and label it as the identity route 5 must adopt. Disagreement among existing active manifests is `BLOCKED_REPOSITORY_IDENTITY_CONFLICT`, not an opportunity to mint another ID. A repository with no commits records `NO_COMMITS`; a repository with no `origin/main` records `NO_UPSTREAM`. Neither blocks a greenfield proposal — an empty repository is the normal starting condition for this route.
 - **Generated identities.** Generate the `rev_`, `evt_`, `dec_`, `delta_`, `mat_`, `ftr_` and F00 `rev_` IDs yourself. A literal `AUTO` in any ID field means "generate one".
 - **Older triggers.** Accept `PROJECT_ID`, `BASE_MAIN_SHA`, `BASE_REVISION_ID`, `PARENT_REVISION_ID`, `PARENT_REVISION_SHA256`, `BASE_REVISION_MANIFEST_SHA256`, `BASE_BLUEPRINT_SHA256`, `BASE_EVENT_ID`, `BASE_STATE_SHA256`, `BASE_REPOSITORIES`, `MATERIALIZATION_ID`, `F00_FEATURE_ID` and `F00_REVISION_ID` when an older trigger supplies them. Verify each against the tree; if a supplied value disagrees with what you read, report the discrepancy and use what you read. Never let a stale supplied hash stand in for the current one.
 
@@ -99,7 +99,7 @@ After MATERIALIZE, those sources must be integrated using normal Git policy and 
 ## Choose the correct route
 
 - `TARGET_PATH` must normalize to `.` at the workspace root. A different path, traversal, absolute alias, symlink escape or case-fold collision is `BLOCKED_TARGET_CONFLICT`.
-- Use this route only when the target is empty or contains planning/tool metadata: VCS metadata, placeholder docs, this kit, agent instructions and native v3 project-planning sources.
+- Use this route only when the target is empty or contains planning/tool metadata: VCS metadata, placeholder docs, this kit, agent instructions, already-merged human inputs and native v3 project-planning sources.
 - Buildable source, package/application manifests, product Compose/runtime files, migrations, tests or a factual product map make this a brownfield target. Stop without writes and use `PROMPT_INIT.md`, then normal feature planning.
 - A partially created scaffold with ambiguous ownership is `BLOCKED_TARGET_CONFLICT`; list exact paths and do not adopt/overwrite it.
 - A v2 `_project_*` tree or v2 generated map/index is not silently converted. Run `PROMPT_MIGRATE_V2_TO_V3.md` on synchronized `main` first.
@@ -197,6 +197,32 @@ CLAUDE.md / AGENTS.md / tool-specific managed blocks
 
 They appear/update only in an authorized reconciliation transaction.
 
+## Root planning status
+
+`PLANNING_STATUS.md` is route 3's sole root-level status artifact. It is not a projection, is not protected, and is never added to a contract schema, expected-output set or reconciliation render. `PROPOSE`, `REFINE` and the authorized write call of `MATERIALIZE` each render the selected project's current reduced state and rewrite only that project's managed block:
+
+```markdown
+<!-- agentic-planning-status:begin prj_<UUID> -->
+...generated route-3 status...
+<!-- agentic-planning-status:end prj_<UUID> -->
+```
+
+Preserve every byte outside the matching block. Reuse the established managed-block rules for agent entry points: malformed nesting, a duplicate marker pair for the same project, or human content whose ownership cannot be determined fails closed. Do not invent a second marker convention, replace the whole file, touch another project's block or repair an ambiguous file. A `REFINE` no-op still renders the block from the unchanged reduced state; if it is byte-identical, leave the file byte-identical rather than manufacture a write.
+
+This root status is deliberately **single-project only**. Count native projects in the resulting canonical source set, not filesystem order. When exactly one project exists, the current project revision declares the exact status write scope and exclusive claim shown in the manifest example, and the route may update its block. When more than one project exists, omit those two manifest entries, do not create/update/delete `PLANNING_STATUS.md` or any of its blocks, preserve all existing bytes, and say explicitly in the completion response that root status was skipped because it has no safe single writer. Do not move the status into a per-project entity file: that would re-bury the human trace this root artifact is meant to provide.
+
+The generated block contains only deterministic, persisted-source facts:
+
+- project ID, slug, title and the workspace `repository_id`, explicitly marked as the identity route 5 must adopt when no contract exists;
+- active revision ID and blueprint hash; counts of revisions and decisions; reduced control state, readiness verdict and blocking-item count;
+- materialization ID and F00 feature/revision IDs once they exist;
+- a root-relative Markdown link to the active revision's `PROJECT_BLUEPRINT.md`, and, after materialization, a root-relative Markdown link to `materializations/<mat-id>/F00_PLAN_HANDOFF.md`;
+- outstanding operator actions recorded by the revision, or a deterministic `None recorded`;
+- an explicit statement that `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, root `PROJECT_BLUEPRINT.md` and the `CLAUDE.md`/`AGENTS.md` or tool-specific managed agent blocks do not exist yet, followed by the sentence that route 5 is what creates those generated files/blocks; and
+- a `Next invocation` fenced block containing the literal, applicable prompt command with resolved project IDs and state-derived values, not a prose pointer. After materialization it must name `PROMPT_RECONCILE_MAIN.md`, `MODE: CHECK`, `RUN_CONTEXT: MERGE_CANDIDATE`, `ACTIVATION: INITIAL_V3_ACTIVATION` and `EXPECTED_CONTRACT_SHA256: ABSENT`; the integration automation supplies its candidate-bound authority, receipt and SHA values only after normal Git integration, which this status must never fabricate.
+
+Derive every status byte from committed canonical sources, or from the exact staged postimage in the same transaction; canonical-sort source IDs/paths instead of relying on filesystem enumeration. Never use wall-clock time, process ID, username or a runtime-generated value. Event timestamps, when displayed, come only from `occurred_at`. Secret-scan the completed `PLANNING_STATUS.md` with every other route-3 persisted output; it may name environment-variable keys but never credential values.
+
 ## Identity, immutability and canonical JSON
 
 - Native IDs use collision-resistant UUIDs and prefixes: `prj_`, `rev_`, `dec_`, `evt_`, `mat_`, `ftr_`, `stp_`, `delta_`, `cat_`, `run_`, `att_` and `rec_`.
@@ -227,7 +253,7 @@ Project and F00 descriptors conform exactly to `schemas/entity-descriptor.schema
 }
 ```
 
-Every project and F00 plan manifest conforms exactly to `schemas/entity-manifest.schema.json`:
+Every project and F00 plan manifest conforms exactly to `schemas/entity-manifest.schema.json`. In a single-project workspace, the project manifest includes the root-status scope and claim shown here:
 
 ```json
 {
@@ -237,14 +263,22 @@ Every project and F00 plan manifest conforms exactly to `schemas/entity-manifest
   "revision_id": "rev_<UUID>",
   "planning_base": [{"repository_id": "repo_<UUID>", "path": ".", "commit": "<40-hex>"}],
   "map_inputs": [],
-  "write_scopes": [{"repository_id": "repo_<UUID>", "kind": "tree", "path": "<planned product path>"}],
-  "resource_claims": [{"resource_id": "<stable resource>", "mode": "exclusive", "isolation_key": null, "reason": "<reason>"}],
+  "write_scopes": [
+    {"repository_id": "repo_<UUID>", "kind": "exact", "path": "PLANNING_STATUS.md"},
+    {"repository_id": "repo_<UUID>", "kind": "tree", "path": "<planned product path>"}
+  ],
+  "resource_claims": [
+    {"resource_id": "workspace:PLANNING_STATUS.md", "mode": "exclusive", "isolation_key": null, "reason": "single-writer over the root planning status block"},
+    {"resource_id": "<stable resource>", "mode": "exclusive", "isolation_key": null, "reason": "<reason>"}
+  ],
   "depends_on": [],
   "integration_owner": "<actor/team identifier>"
 }
 ```
 
 Use `entity_id: ftr_<UUID>` for F00. The closed manifest contains only coordination fields. Project-specific decisions, step graph, gates and artifact hashes live in `revision-artifacts.json`, `PROJECT_BLUEPRINT.md`, `project-blueprint.json` and the F00 Markdown prompts; never add undeclared properties to the descriptor or manifest.
+
+The exact `PLANNING_STATUS.md` scope is required because candidate scope validation treats a changed root status file as a product path; without it, the candidate fails `WRITE_SCOPE_VIOLATION`. The exclusive claim makes its one-writer intent visible. Include both entries only when the workspace contains exactly one native project after this operation. With more than one project, omit both entries from the project manifest, do not write or modify `PLANNING_STATUS.md`, and report that this root-status feature is unavailable; otherwise two projects would conflict on the same exact scope/claim. F00 manifests never claim the root status file.
 
 ## Event-sourced control state
 
@@ -298,7 +332,7 @@ The agent may use an atomic local lock only under:
 
 It is ephemeral, uncommitted and coordinates only this checkout. It must never be described as a repository-wide or distributed lock, never be committed, and never be stolen solely because time elapsed. If unavailable, stop locally. Cross-user correctness comes from unique IDs, immutable files, event-head CAS, current-main synchronization, claim checks and merge-queue reconciliation.
 
-Each write-capable mode renders all intended outputs in `.agentic_planning/.local/greenfield/<operation-id>/`, secret-scans and validates them, rechecks the event head/repository snapshot, writes an immutable PREPARE for multi-file operations, publishes only its create-new allowlist, verifies exact hashes and writes its event/COMMIT last. A crash before COMMIT is incomplete and cannot be treated as state.
+Each write-capable mode renders all intended outputs in `.agentic_planning/.local/greenfield/<operation-id>/`, including the permitted `PLANNING_STATUS.md` managed-block postimage when this is a one-project workspace, secret-scans and validates them, rechecks the event head/repository snapshot, writes an immutable PREPARE for multi-file operations, publishes only its create-new allowlist plus that one controlled status-block replacement, verifies exact hashes, writes its event after the entity dependencies, then publishes the status block from that reduced postimage; a materialization writes `COMMIT` last. A crash before COMMIT is incomplete and cannot be treated as state.
 
 ## Target snapshot, official evidence and secret scan
 
@@ -312,7 +346,10 @@ Closed greenfield allowlist:
 - `GF-KIT`: declared kit files;
 - `GF-NATIVE-PROJECT-PLANNING`: this matching v3 project tree;
 - `GF-AGENT-INSTRUCTIONS`: preserved human-owned instruction/rule files;
+- `GF-HUMAN-INPUT`: a non-executable, non-generated human-owned requirement, template or repository rule adopted as input (for example a requirements `.txt`, a template `.docx` or `.gitignore` secret-pattern rule); and
 - `GF-PLACEHOLDER-README`: plain text/Markdown description with no executable/runtime/package declaration.
+
+Human inputs have no agent write scope or resource claim. They must land in a separate human-owned pull request that merges **before** the planning-source candidate, so the target snapshot adopts them from `EXPECTED_MAIN_SHA` rather than carrying them in the candidate diff. Do not add them to F00 or project scopes merely to satisfy validation: that would falsely authorize agent writes. If a human input is bundled with route-3 planning sources, split it into the preceding human-input pull request and rebuild the candidate from the resulting main.
 
 Any product source/package manifest, workflow, executable script, Compose/runtime file, escaping symlink, custom hook or unclassified path is `UNKNOWN → partial_conflict` before F00 executes. Snapshot rules never whitelist by filename alone when content is executable or generated.
 
@@ -424,10 +461,14 @@ Produce a useful complete base proposal without forcing the human to answer ever
 5. Generate new decision files and one `rev_<UUID>` containing blueprint, normalized JSON, target/evidence/scan/readiness and roadmap artifacts.
 6. Validate the closed plan manifest and the separate `revision-artifacts.json` hash inventory; the latter binds decisions and project-specific artifacts without extending the manifest schema.
 7. Create one `CREATED` event with parent/expected state `null`, state `PLANNED` and a reason that records `readiness=PASS|NOT_READY` plus the readiness-artifact hash.
-8. Publish only the new project tree. Do not create F00, root blueprint/map/index/catalog or managed blocks.
-9. Verify exact bytes and return project/revision/event/state hashes, readiness, risks, feature waves and at most three highest-impact human questions.
+8. Publish only the new project tree and, when the resulting workspace has exactly one project, the selected project's validated `PLANNING_STATUS.md` block. Do not create F00, root blueprint/map/index/catalog or managed agent blocks.
+9. Verify exact bytes and return project/revision/event/state hashes, readiness, status-block result, risks, feature waves and at most three highest-impact human questions.
 
 PROPOSE may be useful while not ready; it does not block artifact creation merely because feedback could improve it.
+
+### Permitted writes
+
+`PROPOSE` may create only its new project descriptor, decisions, revision, event and project-owned deltas, plus the selected project's controlled `PLANNING_STATUS.md` block when the resulting workspace contains exactly one project and its manifest carries the required exact scope and exclusive claim. It never writes a product path, any global projection/catalog, root `PROJECT_BLUEPRINT.md` or a managed agent block. In a multi-project workspace it omits the status scope/claim and leaves every existing `PLANNING_STATUS.md` byte untouched.
 
 ### First-feature intents
 
@@ -466,9 +507,13 @@ Do not reserve a mutable slug directory, generate F01 execution prompts or treat
 4. For semantic changes, create new decision records, a new `rev_<UUID>` whose auxiliary hash inventory names the prior revision, and one `TRANSITIONED`/`PLANNED` event whose parent and `expected_state: "PLANNED"` match the supplied head.
 5. Recompute every affected blueprint/readiness/evidence/roadmap artifact. Never edit the base revision or prior decisions/events.
 6. A semantic no-op creates nothing: return `NO_CHANGE` with the unchanged hashes. Do not create a mutable “current” mirror or no-op event.
-7. Publish create-new files through staging/secret scan/recheck/event-last, then report changed decisions, consequences, readiness, roadmap changes and at most three questions.
+7. Publish create-new files through staging/secret scan/recheck, write the event after its dependencies and, only in a one-project workspace, the selected project's validated `PLANNING_STATUS.md` block from that reduced postimage; then report changed decisions, consequences, readiness, roadmap changes, status-block result and at most three questions.
 
 REFINE may repeat until ready. It is optional when PROPOSE already produced a complete READY revision and the operator accepts it.
+
+### Permitted writes
+
+`REFINE` may create only new decisions, a new immutable project revision, one project event and project-owned deltas. It may also rewrite only the selected project's `PLANNING_STATUS.md` block when exactly one project exists and the new revision declares the exact scope/claim. A semantic no-op produces the same status bytes and changes neither the file nor canonical artifacts. It never writes a product path, global projection/catalog, root `PROJECT_BLUEPRINT.md` or managed agent block; with multiple projects, it omits the status scope/claim and does not touch the root status file.
 
 ## MODE `MATERIALIZE`
 
@@ -488,10 +533,10 @@ Use the local transaction mechanism only to serialize this checkout. Do not crea
 
 1. Recompute the reduced head and target/repository snapshot.
 2. Validate the exact authorization and create staged `AUTHORIZATION.json` containing only its hash, bound IDs/hashes, explicit-human authority record and accepted low-risk decision IDs.
-3. Render the complete schema-valid F00 descriptor/plan/`CREATED`-`PLANNED` event, project planned deltas, one project `TRANSITIONED` event with state `RECONCILIATION_PENDING`, `MANIFEST.json` and the handoff in isolated local staging.
-4. Validate schemas, dependency DAG, claims/scopes/resources, exact create-only path set and secret scan.
+3. Render the complete schema-valid F00 descriptor/plan/`CREATED`-`PLANNED` event, project planned deltas, one project `TRANSITIONED` event with state `RECONCILIATION_PENDING`, `MANIFEST.json`, the handoff and, only in a one-project workspace, the selected project's `PLANNING_STATUS.md` managed-block postimage in isolated local staging.
+4. Validate schemas, dependency DAG, claims/scopes/resources, exact create-only path set, managed-block boundary and secret scan.
 5. Recheck head/snapshot; then create materialization `PREPARE.json` with exact preconditions and postimage hashes.
-6. Publish only new files. Write the project `RECONCILIATION_PENDING` event after its dependencies and materialization `COMMIT.json` last; COMMIT binds PREPARE, authorization, manifest, F00 plan/event and project-event hashes.
+6. Publish only new files plus the permitted controlled root-status block. Write the project `RECONCILIATION_PENDING` event after its dependencies, then the status block from that reduced postimage, and materialization `COMMIT.json` last; COMMIT binds PREPARE, authorization, manifest, F00 plan/event and project-event hashes.
 7. If interrupted before COMMIT, state is `MATERIALIZATION_INCOMPLETE`. A same-ID recovery may finish only when all staged/existing bytes match PREPARE; otherwise stop for explicit recovery. Never start a different materialization over it.
 8. Remove local staging/lock after verification. Do not commit, push, merge or create a branch.
 
@@ -504,7 +549,7 @@ MATERIALIZE may create only:
 - the exact native F00 feature descriptor/plan/execution prompts/initial event; and
 - no-op-free receipts named by the manifest.
 
-It may not write product code or any global projection/catalog/managed block. Existing bytes are never replaced.
+When exactly one project exists and the project manifest declares the required exact scope/claim, it may additionally rewrite only that project's managed `PLANNING_STATUS.md` block to the staged postimage. It may not write product code or any global projection/catalog/managed agent block. Other existing bytes are never replaced; with more than one project it omits the status scope/claim and leaves the root status file untouched.
 
 ## F00 feature-plan contract
 
@@ -604,7 +649,7 @@ Only F00 consumes allowlisted planned claims. Normal features remain blocked whi
 - rollback limited to unchanged manifest-created planning files/empty dirs, never human/product files; and
 - status `F00_PLANNED_RECONCILIATION_REQUIRED`.
 
-`F00_PLAN_HANDOFF.md` tells the operator that planning sources must merge and reconcile before execution. It includes source paths/hashes, claims/conflicts, Git-base expectations and the exact statement: `planning materialized; product not implemented; global reconciliation required`.
+`F00_PLAN_HANDOFF.md` tells the operator that planning sources must merge and reconcile before execution. It includes source paths/hashes, claims/conflicts, Git-base expectations and the exact statement: `planning materialized; product not implemented; global reconciliation required`. When root status is permitted, its managed block must link to this handoff by its actual root-relative path, for example `./.agentic_planning/projects/prj_<UUID>--<slug>/materializations/mat_<UUID>/F00_PLAN_HANDOFF.md`; never substitute an unlinked description.
 
 ## Git collaboration policy
 
@@ -624,7 +669,7 @@ Only F00 consumes allowlisted planned claims. Normal features remain blocked whi
 - One local synthesis transaction creates one revision/event head. Parallel reviewers produce no canonical writes.
 - IDs/revisions/events/materializations use create-only/CAS; no last-writer-wins.
 - Risky `UNKNOWN` blocks rather than granting permission.
-- No direct map/index/catalog/blueprint/managed-block write and no v2/v3 dual-write.
+- No direct map/index/catalog/blueprint/global-managed-block write and no v2/v3 dual-write. The only narrow root exception is the selected project's validated `PLANNING_STATUS.md` block in an exactly-one-project workspace; it never authorizes a route-3 write to an agent entry point or projection.
 - MATERIALIZE cannot weaken F00 invariants or later factual-map requirements.
 
 ## Completion responses
@@ -637,8 +682,22 @@ Project: billing-portal  (prj_9f2c…)  — continuing in this session needs no 
 
 A human who reads only that line must be able to continue. Everything below it is for the record, not for the reader to memorize.
 
-- `PROPOSE`: target, project path/ID, revision/event/state/manifest/blueprint hashes, readiness, assumptions, feature-intent DAG/waves, created paths and up to three questions.
-- `REFINE`: base/new revision and event/state hashes, semantic changes or `NO_CHANGE`, decisions created/superseded, readiness and up to three questions.
-- `MATERIALIZE`: authorized project/revision/event/state hashes, materialization/F00 IDs and paths, F00 claims/scopes/steps, created source hashes, replay result, and `planning materialized; product not implemented; global reconciliation required`.
+Every response names the coordinator `repository_id`; while the contract is absent, say verbatim that route 5 must adopt that value as `CONTRACT.repo_id`.
 
-Every mode explicitly confirms that it did not write `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, `.agentic_planning/catalog/**`, root `PROJECT_BLUEPRINT.md`, managed blocks or product files.
+- `PROPOSE`: target, project path/ID, workspace `repository_id` (and that route 5 must adopt it when no contract exists), revision/event/state/manifest/blueprint hashes, readiness, assumptions, feature-intent DAG/waves, created paths, status-block result and up to three questions.
+- `REFINE`: base/new revision and event/state hashes, semantic changes or `NO_CHANGE`, decisions created/superseded, readiness, status-block result and up to three questions.
+- `MATERIALIZE`: authorized project/revision/event/state hashes, materialization/F00 IDs and paths, F00 claims/scopes/steps, created source hashes, status-block result, replay result, and `planning materialized; product not implemented; global reconciliation required`.
+
+In the same prominent part of every response, state the useful absence before the non-write reassurance: `WORKSPACE_MAP.md`, `.agentic_planning/README.md`, root `PROJECT_BLUEPRINT.md` and the managed `CLAUDE.md`/`AGENTS.md` or tool-specific agent blocks do not exist yet; route 5 is what creates them. Then confirm that this route did not write those paths, `.agentic_planning/catalog/**` or product files. State whether `PLANNING_STATUS.md` was written, was already byte-identical, or was skipped because the workspace has more than one project; a skipped status leaves all of its existing bytes untouched.
+
+End with the literal next prompt invocation in a fenced block, never a sentence that merely points to another document. Fill every value route 3 can resolve; do not invent a future candidate SHA, writer authority or integration receipt. Before materialization, emit the applicable `REFINE` or first-call `MATERIALIZE` invocation with the resolved project ID and recorded operator action(s). After materialization, emit the initial route-5 handoff below after normal Git integration, with the integration automation filling its candidate-bound fields from the actual candidate:
+
+```text
+Read agentic-planning-kit/PROMPT_RECONCILE_MAIN.md and execute it as your complete task spec.
+
+MODE: CHECK
+TARGET_PATH: .
+RUN_CONTEXT: MERGE_CANDIDATE
+ACTIVATION: INITIAL_V3_ACTIVATION
+EXPECTED_CONTRACT_SHA256: ABSENT
+```
