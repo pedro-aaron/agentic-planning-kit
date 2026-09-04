@@ -1,6 +1,6 @@
-# PROMPT_INIT — Generate `WORKSPACE_MAP.md` (the workspace map)
+# PROMPT_INIT — Generate/reconcile `WORKSPACE_MAP.md` (the workspace map)
 
-You are a code agent (Claude Code / Cursor / Codex) running at the **root of a workspace** — the directory the kit is pointed at. Execute this file as your complete task spec. You will produce the factual map plus managed entry-point pointers, and write **no product code**. The trigger supplies `USER: <username>`; INIT writes the shared map, not a per-user artifact, so that field matters only if F00 asks you to reconcile a project under `.agentic_planning/<USER>/`.
+You are a code agent (Claude Code / Cursor / Codex) running at the **root of a workspace** — the directory the kit is pointed at. Execute this file as your complete task spec. You will produce the factual map plus managed entry-point pointers, and write **no product code**. The launcher supplies `USER: <username>` and `MODE: INIT | RECONCILE_FEATURE` (`INIT` if omitted); the latter also supplies `FEATURE_PATH`, starts at its mode section (skip the normal applicability/procedure) and may update that user's status plus the generated global index, never another user's session.
 
 ---
 
@@ -17,7 +17,7 @@ Produce `WORKSPACE_MAP.md` at the workspace root: a **factual map of the workspa
 
 **Expect a workspace, not a single project.** The common target of this kit is a root directory that holds **several independent subprojects**, each with its **own toolchain, its own `docker-compose` and possibly its own database** (the discovery still produces **one** `WORKSPACE_MAP.md` at the workspace root, organized **per subproject**). Treat this as the norm and run the discovery per subproject — see "Workspace of subprojects" below.
 
-Then **hydrate the agent entry points** (`CLAUDE.md`, `AGENTS.md`, and Cursor rules if present) with a managed pointer block, so any agent reading those files is routed to the map (see "Hydrate the agent entry points" below).
+Then **hydrate the agent entry points** (`CLAUDE.md`, `AGENTS.md`, and Cursor rules if present) with a managed pointer block, so any agent reading those files is routed to the map and the mandatory feature-close reconciliation (see "Hydrate the agent entry points" below).
 
 ## What `WORKSPACE_MAP.md` is — and is not
 
@@ -25,28 +25,30 @@ Then **hydrate the agent entry points** (`CLAUDE.md`, `AGENTS.md`, and Cursor ru
 - It is a **map of routes**: where things live, how to build/test them, the hard rules, the canonical contracts, the **seams** where new work attaches, the command/file/resource constraints that determine safe parallelism, the **quality gates** that verify correctness deterministically, and the **patterns/recipes** for adding new work that looks like it belongs. It is not a tutorial and not aspirational.
 - The most valuable parts for incorporating new features are the **conventions** (the blessed way to do each thing) and the **recipes** (the repeatable shape of "add a new ___"). Capture them so a generated feature imitates what already exists instead of inventing a second way.
 - **Every claim must be grounded** in a file you actually read or a command you actually found declared (in `package.json`, `Makefile`, `docker-compose.yml`, CI config, `pyproject.toml`, `build.gradle`, etc.). Patterns and recipes must be **discovered by example** — generalized from 2–3 real instances and cited with exemplar `file:symbol`s, never guessed. **Quality gates in particular are factual, never aspirational: a gate that does not exist is `MISSING`.** Anything you cannot determine goes under **Unknowns** — never invent paths, commands, conventions, or patterns.
-- It is a **living document**. Re-run this prompt after structural changes; a feature planned with `PROMPT_CREATE_FEATURE.md` that changes workspace structure ends with a **map-sync step** that updates the touched sections, so the map never goes stale. Always **update in place** (preserve human edits and unrelated sections) rather than overwriting wholesale.
+- It is a **living document**. Re-run `INIT` after broad structural changes; every feature's final step runs `RECONCILE_FEATURE`, which checks and updates its affected facts, the global planning index and managed pointers. Always **update in place** (preserve human edits and unrelated sections) rather than overwriting wholesale.
 
 ### Bootstrap-to-factual reconciliation (greenfield F00 only)
 
-If the existing map declares `Map maturity: bootstrap` or `mixed`, and the matching
-`.agentic_planning/<user>/_project_<slug>/` blueprint exists:
+If the map is `bootstrap`/`mixed` and the matching project blueprint exists: (1) treat its roadmap
+and `PLANNED` claims as intent, never evidence; (2) check each claim against disk — promote only
+real file/symbol or declared-command evidence to `EXISTING`, retain unbuilt `PLANNED`, and mark
+conflicts `UNKNOWN` with evidence; (3) record drift, citing the relevant `DECISIONS.md` `D-NN`;
+(4) set `factual` only when every F00 foundation claim is grounded and no blocker remains, otherwise
+`mixed` (normal CREATE FEATURE stays blocked); (5) INIT never declares F00 accepted — route 5 closes execution, manual QA accepts it.
 
-1. Treat the blueprint, its roadmap and its `PLANNED` claims as intent, never as evidence.
-2. Reconcile each claim in the map against what is actually on disk now: promote it to `EXISTING`
-   only with a real file/symbol or a declared, verified command; keep unbuilt claims `PLANNED`;
-   mark conflicting or unverifiable claims `UNKNOWN` with the exact evidence.
-3. Record implementation drift instead of rewriting reality to match the blueprint. Where a decision
-   in `DECISIONS.md` explains a claim, cite its `D-NN` id.
-4. Set `Map maturity: factual` only when every F00 foundation-required claim is `EXISTING`, real
-   commands, seams and resources are grounded, and no blocking drift remains. Otherwise set
-   `Map maturity: mixed`; normal CREATE FEATURE stays blocked.
-5. INIT never declares F00 complete — the user's manual QA does. INIT reports the maturity honestly
-   and stops.
+## MODE `RECONCILE_FEATURE` — mandatory final-step close
+
+Canonicalize `FEATURE_PATH` under `.agentic_planning/<USER>/` to exactly one `_feature_<slug>/` or `_project_<slug>/F00/` and one invoking-session row (Features for a feature; Proyectos for F00). It runs **inside the last step after all gates and its preliminary handoff**, never rerunning gates/builds/migrations. Complete all preflight before writes: graph outputs for every declared step; exit `0` evidence for every applicable declared code gate; factual normal map, or factual F00 map after terminal INIT (gates before F00's gate-bootstrap are `n/a`); writable map/pointer/index targets. If any check fails, stop without marking completion. Otherwise, before the handoff is declared complete:
+
+1. Update only affected factual map sections; upsert the `Existing docs & planning` global-close pointer and classify `WORKSPACE_MAP.md`, `.agentic_planning/README.md` and managed entry-point blocks `exclusive`; apply **Hydrate the agent entry points** exactly to root/affected subprojects and only present Cursor/other entry points, preserving text outside markers.
+2. Create `.agentic_planning/README.md` with an H1/explanation, or insert `<!-- agentic-planning-index:begin — managed by agentic-planning-kit -->` / `<!-- agentic-planning-index:end -->` if missing; rebuild only that block, sorted by direct-child username, as `## Usuarios` rows `| <user> | [SESSION.md](./<user>/SESSION.md) |`. Do not copy status or feature rows: sessions are canonical.
+3. Only after 1–2 succeed, mark the invoking artifact's own row `✅ Ejecutada (YYYY-MM-DD)` (`## Features` for `_feature_*`, `## Proyectos` for `F00`); never alter another user. This means execution/reconciliation closed; manual QA remains pending.
+
+Preserve prose outside that block. The human scheduler must serialize routes 0/5 in one checkout; if an external overlap still conflicts, resolve it and rerun this mode — never lock or overwrite blindly. Print feature path, map/pointer changes, index user count and status change, then skip the normal procedure.
 
 ## Procedure
 
-1. **Inventory and route gate.** List the top-level tree. Read `README*`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING*`, and any per-directory `CLAUDE.md`/`README`. Apply the applicability gate above before any write. Detect whether an eligible target is a single project or a **workspace of independent subprojects** (multiple lockfiles / VCS roots / `docker-compose` files / per-directory `CLAUDE.md`). **If it is a workspace, that is the expected case:** apply discovery steps 2–9 **once per subproject**, scoped to that subproject's files, and shape the output per subproject — see "Workspace of subprojects" below. Never conflate two subprojects' stacks, composes, or databases into one table.
+1. **Inventory and route gate.** List the top-level tree; read `README*`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING*` and per-directory entry docs. Apply the gate, then detect a single project versus independent subprojects (lockfiles / VCS roots / compose / local `CLAUDE.md`). For a workspace, apply steps 2–9 per subproject without conflating its stack, compose or DB.
    - **Analyze `docker-compose*.yml` / `compose*.yaml` in full when present — this is fundamental.** Enumerate every service (name, image/build, published `ports`, `volumes`, `networks`, `depends_on`, `healthcheck`) and its env (`environment:` / `env_file:` keys **by name**, never values). Compose is the ground truth for the run/test commands (§4), the data store and how the dev DB is reached (§6), and the dev environment as a whole. Note override/profile files (`docker-compose.override.yml`, `*.dev.yml`, `*.prod.yml`) and which one is the default `up`.
 2. **Detect stack & toolchain, and the key libraries actually used.** From manifests (`package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `Cargo.toml`, `pom.xml`/`build.gradle`, `Gemfile`, `composer.json`, `*.csproj`, Dockerfiles, compose) **and from how they're imported in real code**. Record languages, frameworks, package managers, runtime versions, and the **blessed choice per concern** (HTTP client, ORM/data access, validation, state management, styling/UI, testing, logging…). When more than one option appears, note which is the canonical one and which is legacy/being-phased-out — so a new feature picks the right one.
 3. **Find commands and their concurrency effects.** Extract the **exact** build / run / test / lint commands from `scripts` blocks, `Makefile`, `Taskfile`, `justfile`, CI workflows, compose services. Quote them verbatim. Note the working directory each must run from. From declarations/config only, identify source/generated/cache/temp/report writes, fixed ports, compose project/volumes/networks, DB/service state and any supported isolation key/namespace. Classify each command `parallel-safe`, `parallel-safe with isolation`, `exclusive`, or `UNKNOWN`; `UNKNOWN` means future planners serialize it. Do not execute commands during INIT.
@@ -56,9 +58,9 @@ If the existing map declares `Map maturity: bootstrap` or `mixed`, and the match
 7. **Identify seams (attachment points).** For each common concern, find the precise `file:symbol` where new work hooks in — e.g. HTTP routing, the data/persistence layer, auth/tenant boundary, the UI navigation/routing, background jobs, the validation layer.
 8. **Extract conventions, principles & engineering practices from real code** (not just lint config). Read a handful of representative files and record two things. **(a) Code style:** file/folder organization, naming, how models/DTOs are defined, error-handling, dependency direction, test structure. **(b) Engineering practices the repo actually demonstrates** — and rate each **strict / pragmatic / absent** with an exemplar: contract/interface-first design (interfaces/ports/protocols/ABCs/traits defined apart from implementations?), dependency injection/inversion (constructor injection, DI container, `Depends`, etc.), SOLID signals (single-responsibility module size, open/closed extension points, substitutability), abstraction architecture (layered / hexagonal-ports-&-adapters / clean / pragmatic), type safety (typed throughout? strict mode/mypy?), immutability & purity, validation at boundaries, and the testing bar (what's expected: unit/integration, mocking style, coverage signals). Capture the repo's **real** bar, not an idealized one — note where it is deliberately pragmatic. Cite the files you read.
 9. **Discover patterns & recipes by example.** This is the highest-value pass. For each recurring "add a new ___" (endpoint, screen, model/migration, job, component, test…), open **2–3 existing instances**, generalize the **ordered steps** they share, and write the recipe citing the exemplar `file:symbol`s and the blessed libraries it uses. Record the recipe's typical independently-owned write area and any shared integration/registration file that needs a later single writer. A recipe is only as trustworthy as its examples — if you can find just one instance, say so; if none, leave it to Unknowns.
-10. **Write the file** using the exact structure below.
-11. **Hydrate the agent entry points** (next section): inject/update the managed pointer block in `CLAUDE.md`, `AGENTS.md`, and Cursor rules.
-12. Print a 3-line summary to the operator (sections written, modules found, recipes captured, quality gates found/`MISSING` per subproject, which entry points were hydrated, Unknowns count, and how many concurrency resources/commands remain `UNKNOWN` and therefore serialized).
+10. **Write the file** using the exact structure below, including the route-5/global-index pointers.
+11. **Hydrate entry points** (next section) and print a 3-line summary: sections/modules/recipes/gates,
+    hydrated pointers, Unknowns and resources/commands still `UNKNOWN` and therefore serialized.
 
 ## Output structure — write exactly these sections
 
@@ -67,7 +69,7 @@ If the existing map declares `Map maturity: bootstrap` or `mixed`, and the match
 
 > Generated by `agentic-planning-kit/PROMPT_INIT.md` on <YYYY-MM-DD>. Complements (does not replace) CLAUDE.md / AGENTS.md / README. Regenerate after structural changes. Every entry is grounded in a real file/command; see "Unknowns" for gaps.
 
-**Planning-map contract:** 3 — includes command side effects, single-writer hotspots and resource isolation for dependency-DAG planning, plus factual per-subproject quality gates.
+**Planning-map contract:** 4 — includes command side effects, single-writer hotspots, route-5 reconciliation and factual per-subproject quality gates.
 **Map maturity:** <factual normally; mixed only during an incomplete greenfield F00 reconciliation>
 <!-- Greenfield-origin workspace only: permanently preserve **Blueprint:** `.agentic_planning/<user>/_project_<slug>/PROJECT_BLUEPRINT.md`. While the map is not yet factual use **Greenfield gate:** `F00_PENDING`; the factual INIT changes only the gate to `FACTUAL_READY`, never removes the blueprint reference. -->
 
@@ -123,7 +125,7 @@ The commands a code-writing feature step must run and pass before writing its ha
 
 | Resource / single-writer hotspot | Scope | Access (`shared_read` / `exclusive` / `UNKNOWN`) | Isolation key / namespace | Parallel-safe only when | Evidence |
 |----------------------------------|-------|--------------------------------------------------|---------------------------|-------------------------|----------|
-| package manifest / composition root / registry / compose / DB / fixed port / cache / generated dir | `path` or service | ... | ... | ... | `file:line/symbol` |
+| package manifest / composition root / registry / compose / DB / fixed port / cache / generated dir / `WORKSPACE_MAP.md` / `.agentic_planning/README.md` | `path` or service | ... | ... | ... | `file:line/symbol` |
 
 | Command family | Source/cache/state side effects | Isolation support | Parallel classification | Evidence |
 |----------------|---------------------------------|-------------------|-------------------------|----------|
@@ -208,7 +210,7 @@ Each recipe is generalized from real examples and cited. A feature plan points i
 
 ## 10. Existing docs & planning
 - `CLAUDE.md` / `AGENTS.md`: <present? what it covers>
-- `.agentic_planning/`: <present? which user sessions exist, and this user's own plans; see `SESSIONS.md`>
+- **Global close/index:** `.agentic_planning/README.md` links direct-child `SESSION.md` files (the source of truth); route 5 `RECONCILE FEATURE` runs automatically in every final feature step after gates and reconciles map facts, pointers and the index.
 - Other key docs: <links>
 
 ## 11. Unknowns
@@ -251,8 +253,8 @@ Most targets of this kit are a **workspace holding several independent subprojec
 - **Seams (file:symbol):** ...
 - **Conventions / principles:** <or "same as workspace default">
 - **Recipes (add a new ___):** ...
-
 ## Existing docs & planning
+- **Global close/index:** `.agentic_planning/README.md` links direct-child `SESSION.md` files; every final feature step runs route 5 to reconcile it, map facts and managed pointers.
 ## Unknowns
 ````
 
@@ -268,7 +270,7 @@ The managed block (identical content for `CLAUDE.md` and `AGENTS.md`):
 <!-- agentic-routes:begin — managed by agentic-planning-kit. Edit WORKSPACE_MAP.md, not this block. -->
 ## Workspace map
 
-This workspace has a generated route map at [`WORKSPACE_MAP.md`](./WORKSPACE_MAP.md): stack and blessed libraries, modules/subprojects, build/test commands (and where they run), the per-subproject quality gates (deterministic test/lint commands that code-writing steps must pass), hard rules, canonical contracts, shared-resource and single-writer constraints for safe parallel agents, the `file:symbol` seams where new work attaches, the code conventions and engineering principles (contract/interface-first, DI, SOLID — at this workspace's real bar), and the recipes for adding a new endpoint/screen/model/job. **Read it before planning or implementing changes** so new code matches how this workspace already does things. Normal feature planning requires `Map maturity: factual`; if it is `mixed`, complete greenfield F00 and its factual handoff first. Plan features with `agentic-planning-kit/` (see its `TRIGGERS.md`); every planning route writes under your own `.agentic_planning/<username>/`, so open a session first. Regenerate this map and this block by re-running `agentic-planning-kit/PROMPT_INIT.md`.
+This workspace has a generated route map at [`WORKSPACE_MAP.md`](./WORKSPACE_MAP.md): stack and blessed libraries, modules/subprojects, build/test commands (and where they run), quality gates, hard rules, contracts, shared-resource constraints, seams, conventions and recipes. **Read it before planning or implementing changes.** Normal feature planning requires `Map maturity: factual`; if it is `mixed`, complete F00 and its factual handoff first. Plans live under your own `.agentic_planning/<username>/`; their final step must automatically run `agentic-planning-kit/TRIGGERS.md` route 5 to reconcile this map, managed pointers and the global `.agentic_planning/README.md` index. Regenerate broadly with `PROMPT_INIT.md`.
 <!-- agentic-routes:end -->
 ```
 
@@ -286,7 +288,7 @@ Keep the block a *pointer*, never a copy: do not paste stack/commands/seams/gate
 
 ## Constraints
 
-- **Writes limited to:** `WORKSPACE_MAP.md` (full content) and the **managed pointer block** inside the agent entry points above. Only inside an explicit F00 context may you additionally append that F00's own reconciliation note under `.agentic_planning/<USER>/_project_<slug>/F00/outputs/`. Never write into another user's session directory. No product-code edits, no refactors, no edits outside the markers.
+- **Writes in `INIT`:** `WORKSPACE_MAP.md` and managed pointer blocks only (plus an F00 note in its own outputs). **`RECONCILE_FEATURE` additionally writes** `.agentic_planning/README.md`'s managed index and the invoking user's status row; it may read, never write, other sessions. No product-code edits, refactors or edits outside markers.
 - **Do not run state-changing commands.** Inspect manifests and configs; do not start servers, run installers, run migrations, or invoke build/test commands. You are *reading* the commands, not executing them. This applies to gate commands too — INIT records them; feature steps run them.
 - **Do not claim concurrency safety without evidence.** A declared namespace/isolation key or disjoint side effect may prove safety; absence of evidence is `UNKNOWN` and future plans serialize that command/resource. Safety and data-store rules override parallelism.
 - **Never echo secrets.** Do not copy `.env`, tokens, keys, or connection strings into the file. Reference them by name only.
@@ -295,4 +297,4 @@ Keep the block a *pointer*, never a copy: do not paste stack/commands/seams/gate
 
 ## Deliverable
 
-`WORKSPACE_MAP.md` at the workspace root — flat structure for a single-project workspace, or **per-subproject** structure for a multi-subproject workspace (each subproject with its own stack, commands, quality gates, DB/migration protocol from its own compose, concurrency/resource-isolation constraints, seams, conventions/principles, recipes and shared integration hotspots) — **plus** the managed pointer block hydrated into the present agent entry points (`CLAUDE.md`, `AGENTS.md`, Cursor rules if used; and each subproject's entry points in a workspace). An explicit F00 invocation additionally appends its reconciliation note under that F00's `outputs/`. Then a 3-line summary printed back: map maturity, subprojects mapped, recipes captured, quality gates found/`MISSING` per subproject, which entry points were hydrated, overall Unknowns count and the count of concurrency resources/commands classified `UNKNOWN`.
+`INIT` delivers `WORKSPACE_MAP.md` (flat or per-subproject, with stack, commands, gates, DB protocol, resources, seams, conventions, recipes and route-5/global-index pointers) plus managed entry-point blocks. `RECONCILE_FEATURE` updates its affected facts/pointers, the invoking status and the generated global index. Print the appropriate compact summary: map maturity/subprojects/gates/pointers/Unknowns for INIT; feature/map/index/status for reconciliation.

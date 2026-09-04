@@ -2,7 +2,7 @@
 
 You are a code agent (Claude Code / Cursor / Codex) running at the **root of a workspace**. Execute this file as your complete task spec. You will **plan a feature** — you write planning documents only, **never product code**.
 
-The trigger supplies `USER: <username>`. Every file you write goes under `.agentic_planning/<USER>/`. If that directory does not exist, stop and tell the operator to run trigger 0 (open session) first. **Never write into another user's session directory**, never create or edit a global index, and never read another user's plans to inform this one.
+The trigger supplies `USER: <username>`. Every planning file you write goes under `.agentic_planning/<USER>/`. If that directory does not exist, stop and tell the operator to run trigger 0 (open session) first. **Never write into another user's session directory** or read another user's plans to inform this one. The only later exception is the mandatory route-5 close invoked by this plan's final executing step; it enumerates session paths for the shared index but writes only this user's row.
 
 Treat the free text after "Feature to build:" in the trigger as the feature intent. If it is empty or one ambiguous line, ask up to **3** crisp clarifying questions before planning; otherwise proceed.
 
@@ -14,9 +14,10 @@ Produce a small, executable plan under `.agentic_planning/<USER>/_feature_<slug>
 
 ## Inputs — read before planning
 
-1. **`WORKSPACE_MAP.md`** at the workspace root. If it is missing, clearly stale for the touched subprojects, **or lacks their Quality gates tables**, stop and tell the operator to run `PROMPT_INIT.md` (trigger 1) first. Ground everything you generate in it: commands/cwd, **quality gates**, hard rules, contracts, data-store access modes, seams, recipes, blessed libraries, conventions and user-facing copy language.
+1. **`WORKSPACE_MAP.md`** at the workspace root. If it is missing, stale for touched subprojects, lacks Quality gates, **or lacks the `Existing docs & planning` global-close entry**, stop and direct the operator to `PROMPT_INIT.md` (trigger 1). Ground commands/cwd, gates, rules, contracts, access modes, seams, recipes, libraries, conventions and user-facing language in it.
 2. **`CLAUDE.md` / `AGENTS.md`** (root and per-module) — layer conventions. Non-negotiable.
-3. **Your own prior features** under `.agentic_planning/<USER>/`, if any — match their document style.
+3. **`agentic-planning-kit/TRIGGERS.md` route 5** and `PROMPT_INIT.md`'s `RECONCILE_FEATURE` mode — the required close protocol this plan must embed in its final step.
+4. **Your own prior features** under `.agentic_planning/<USER>/`, if any — match their document style.
 
 ## The method
 
@@ -25,7 +26,7 @@ A feature lives in `.agentic_planning/<USER>/_feature_<slug>/`:
 ```text
 _feature_<slug>/
 ├── FEATURE_<SLUG>.md   # canonical doc: scope, binding contract, decisions, graph, manual QA checklist
-├── TRIGGERS.md         # ONE copy-paste launcher per step; no orchestrator
+├── TRIGGERS.md         # one launcher per step; the final one invokes route 5 in-process
 ├── steps/
 │   ├── 01-<slug>.md    # step files — single-session, explicit dependencies
 │   └── NN-<slug>.md
@@ -36,7 +37,7 @@ Four files and two directories. There is no per-feature README: the index table 
 
 Binding principles:
 
-- **1 step = 1 agent session.** Each step declares its dependencies (`Depends on`), and **steps with no dependency edge between them are parallel by default — plan for maximum safe concurrency**. Serialize only when forced: overlapping write scopes, or a shared **exclusive resource** from the map's concurrency tables (shared DB / live-API evidence commands, Gradle, single-writer files) — **gate commands classified `exclusive` count as shared resources too**. The user opens each trigger in its own fresh session, respecting only the dependency edges — **the human is the scheduler**: no orchestrator sessions, no wave scripts, no machine-readable DAG files.
+- **1 step = 1 agent session.** Each step declares dependencies, and no edge means parallel by default. Serialize only for overlapping writes or a map `exclusive` resource (including gates). The human schedules sessions: additionally, routes 0/5 are workspace-global exclusive resources, so do not run those close/index phases concurrently in one checkout. No orchestrator, wave scripts or machine-readable DAG.
 - **Execution graph, human-readable.** `FEATURE_<SLUG>.md` §4 shows the dependency graph as a **Mermaid diagram** (parallel branches side by side) plus a `Depends on` column, and states in one line which steps may launch simultaneously and why that is safe (disjoint writes + disjoint exclusive resources, gates included). This *replaces* — never reintroduces — `execution-dag.json`.
 - **Suggested model effort per step.** Every step file carries a one-line `Suggested model effort`: a relative tier (`low` | `medium` | `high`) plus concrete examples for the three agent CLIs the operator uses — **Claude Code** (model + thinking effort), **Codex** (model + reasoning effort), **Cursor** (mode). It is a hint for the human launching the session, not routing machinery: no matrices, no per-step option tables, no fallback chains.
 - **Few steps.** Prefer 2–6. Split by subproject and cohesive concern; merge steps that a single ordinary session can finish. A tiny feature may be 1 step.
@@ -50,20 +51,20 @@ Binding principles:
 - **Imitate, don't invent.** Each step names the seam (`file:symbol`, map §8), the recipe + exemplar (map §9) and the blessed library (map §2) it follows. No second way to do what already has a way.
 - **Scope discipline.** The feature doc has an explicit *Out of scope*. A step that needs something out of scope stops and reports.
 - **Data-store safety.** Respect each store's access mode from the map. Migrations run only against local/dev, never production. Read-only/sealed stores get no mutation plan of any kind.
-- **Short handoff reports, nothing else.** Each step ends by writing `outputs/NN_<slug>.md` (≤40 lines: what changed, files touched, gate results — command + exit code —, tests added with a one-line claim each, test files touched, decisions taken, anything the next step must know). No `tests/`, `evals/`, `fixes/`, cache or cycle directories, no manifests, no scorecards, no JSON.
-- **Map-sync only when structure changed.** If the feature adds/moves a seam, recipe, blessed library, store protocol, subproject **or quality gate**, the last step updates the touched `WORKSPACE_MAP.md` sections in place (and entry-point pointer blocks for a new subproject). If nothing structural changed, there is no map-sync step at all. `WORKSPACE_MAP.md` is the one shared planning file; a step that edits it says so in its report.
-- **Session index registration — keep it hydrated.** `.agentic_planning/<USER>/SESSION.md` is **your own** index, written only by you. Its `## Features` table carries one row per feature (what it does, impacted subprojects, status), **newest first**. Statuses: `📝 Diseñada` · `🔄 En ejecución` · `✅ Ejecutada` · `⛔ Superseded`. Planning a feature **adds its row at the top** (status `📝 Diseñada`). The **final step of every plan** — the map-sync step when present, otherwise the last step — updates the row to `✅ Ejecutada (YYYY-MM-DD)` as part of its declared deliverables. If the new feature supersedes an older one of yours, flip that row to `⛔ Superseded` in the same edit. No plan ships without its row; no finished feature leaves its row stale.
+- **Short handoff reports, nothing else.** Each step writes `outputs/NN_<slug>.md` (≤40 lines: changed files, gate results/exit codes, tests, decisions, next-step notes). A final report reserves exactly four lines: `## Cierre` plus three results. No `tests/`, `evals/`, `fixes/`, cache/cycle dirs, manifests, scorecards or JSON.
+- **Mandatory close/reconcile.** The final step is a join that depends on every other terminal step; if no natural join exists, add one non-code close step within the 2–6 limit. After gates it writes its preliminary handoff, then automatically invokes root route 5 `RECONCILE FEATURE` in the same session with `USER` and `FEATURE_PATH`, filling the reserved close block before success; it is not a human launcher or graph node. Route 5 updates changed factual map sections plus the `Existing docs & planning` pointer, refreshes pointers, rebuilds `.agentic_planning/README.md` and marks execution complete (QA remains pending). Those artifacts are `exclusive`; if close fails, the step reports the blocker and remains unclosed.
+- **Session and global index registration.** `.agentic_planning/<USER>/SESSION.md` is the source index for that user; planning adds its newest-first `## Features` row as `📝 Diseñada`, and route 5 alone flips it to `✅ Ejecutada (YYYY-MM-DD)` after reconciliation. `.agentic_planning/README.md` is the generated, deterministic global navigation index of all direct-child sessions; it never becomes a second source of truth. Flip any superseded row of yours while planning.
 - **Manual QA checklist for the user.** `FEATURE_<SLUG>.md` §7 lists concrete actions + expected results the user performs by hand (app screens, API calls, DB queries), written **in Spanish** (user-facing). This replaces every automated *acceptance* artifact. The checklist focuses on what gates cannot prove — UX, device flows, visuals, end-to-end acceptance — and need not re-test correctness the binding test cases already cover.
-- Explicitly **do not generate**: `planning-basis.json`, `execution-dag.json`, model-routing matrices, work-class tags, acceptance rubrics, evaluator/remediation/replan steps, roadmap/readiness-ledger nodes, `HUMAN_VERIFICATION.md`, orchestrator/dispatch triggers, coverage thresholds or enforcement (record the figure only when a gate already emits it), mutation-testing requirements, BDD-runner setup, or any JSON artifact at all. The Mermaid graph in §4, the one-line effort hint per step, and the binding test cases + gates per code step are the **only** scheduling/routing/verification artifacts.
+- Explicitly **do not generate**: `planning-basis.json`, `execution-dag.json`, model-routing matrices, work-class tags, acceptance rubrics, evaluator/remediation/replan steps, roadmap/readiness-ledger nodes, `HUMAN_VERIFICATION.md`, orchestrator/wave scripts, coverage thresholds or enforcement (record the figure only when a gate already emits it), mutation-testing requirements, BDD-runner setup, or any JSON artifact at all. The Mermaid graph, one-line effort hint, binding cases/gates and mandatory in-process route-5 close are the only scheduling/routing/verification artifacts.
 
 ## Procedure
 
 1. **Parse the intent.** Restate the feature in one sentence. Derive `<slug>` (kebab-case, ≤4 words) and `<SLUG>` (UPPER_SNAKE). If `.agentic_planning/<USER>/_feature_<slug>/` already exists, stop and ask whether to supersede it or pick another slug.
 2. **Scope against the map.** Identify the touched subproject(s), the seams/recipes/blessed libs per subproject, **the Quality gates table per touched subproject** (note any `MISSING` gate now — it becomes a bootstrap step or a §6 degradation note), and what is explicitly out of scope. Check data-store access modes for anything the feature writes.
 3. **Write `FEATURE_<SLUG>.md`** using the template below (≤200 lines). §3 (contract) is the spine — be concrete: the binding test cases of every code step derive from it.
-4. **Decompose into 2–6 single-session steps and assign dependencies for maximum safe parallelism**: check each pair of candidate-parallel steps for overlapping write scopes and shared exclusive resources (map concurrency tables — **including their gate commands**) before leaving them unconnected. For each code step, derive its binding test cases from §3 (happy path, negative, edge). Write each step file under `steps/` with the template below (≤60 lines each).
-5. **Write `TRIGGERS.md`** — one launcher block per step, in dependency order, grouped by parallel level.
-6. **Register the feature in `.agentic_planning/<USER>/SESSION.md`**: insert its row **at the top** of the `## Features` table with status `📝 Diseñada`, the one-line description and the impacted subprojects; flip any superseded feature of yours in the same edit. Make sure the plan's final step lists the `✅ Ejecutada` flip among its deliverables.
+4. **Decompose into 2–6 single-session steps and assign dependencies for maximum safe parallelism**: check candidate-parallel pairs for overlapping writes and shared exclusive resources (including gates). Make the final step depend on every terminal branch; if none naturally joins them, add a non-code close step. For each code step, derive §3's happy/negative/edge cases and write the step file (≤60 lines).
+5. **Write `TRIGGERS.md`** — one launcher per step, grouped by parallel level; append route 5 inside the final launcher after its preliminary report and before successful completion.
+6. **Register the feature in `.agentic_planning/<USER>/SESSION.md`**: insert its row at the top of `## Features` as `📝 Diseñada` with its one-line description and impacts; flip any superseded row of yours. Route 5, not the planner, performs the final `✅ Ejecutada` update.
 7. **Print a summary**: slug, step list with dependencies/parallel groups, touched subprojects, gates per step, and assumptions.
 
 ---
@@ -179,12 +180,12 @@ _Created: <month year>. Origin: <one line>._
 - <product files/paths>.
 - <code steps> tests implementing the binding test cases above, in the subproject's declared test location/style.
 - `outputs/NN_<slug>.md` — short handoff report (≤40 lines): what changed, files touched, **gate results (command + exit code)**, **tests added (one-line claim each) + test files touched**, decisions, notes for the next step.
-- <final step only> update the feature's row in `.agentic_planning/<USER>/SESSION.md` → `✅ Ejecutada (YYYY-MM-DD)`.
+- <final step only> end this ≤40-line preliminary report with `## Cierre` plus three placeholders; invoke root route 5 with `USER: <USER>` and `FEATURE_PATH: .agentic_planning/<USER>/_feature_<slug>/`, then replace those three lines with its map/pointer/index/status result. Do not end successfully if it fails.
 ````
 
 ## Template — `TRIGGERS.md`
 
-One launcher **per step**, in dependency order. No orchestrator block, no cycle launchers. Group the launchers by parallel level when the graph has branches (e.g. "after 01, launch 02 and 03 together").
+One launcher **per step**, in dependency order. No orchestrator block or cycle launchers. Group parallel branches (e.g. "after 01, launch 02 and 03 together"); the final launcher is the join and contains the mandatory in-process route-5 close.
 
 ````markdown
 # Agent session triggers — launch in dependency order; steps in the same parallel group may run simultaneously
@@ -193,21 +194,28 @@ One launcher **per step**, in dependency order. No orchestrator block, no cycle 
 
 ```text
 Read .agentic_planning/<USER>/_feature_<slug>/steps/01-<slug>.md and execute it as your complete task spec.
-Start at the workspace root. Before any code, read WORKSPACE_MAP.md, the layer CLAUDE.md/AGENTS.md it names, and the prior reports it lists. Write only within the step's declared scope. If the step writes product code: implement its binding test cases, then run its Gates commands and record each command + exit code in the report; never delete, skip or loosen existing tests to pass. Finish by writing outputs/01_<slug>.md (≤40 lines).
+Start at the workspace root. Before any code, read WORKSPACE_MAP.md, the layer CLAUDE.md/AGENTS.md it names, and the prior reports it lists. Write only within the step's declared scope. If the step writes product code: implement its binding test cases, then run its Gates commands and record each command + exit code in the report; never delete, skip or loosen existing tests to pass. Write outputs/01_<slug>.md (≤40 lines), ending with `## Cierre` plus three placeholders if 01 is terminal; then append the mandatory terminal suffix below when it is terminal.
 ```
 
 ## NN — <step title>
 
 ```text
-<same shape, per step>
+Read .agentic_planning/<USER>/_feature_<slug>/steps/NN-<slug>.md and execute it as your complete task spec.
+Start at the workspace root. Before any code, read WORKSPACE_MAP.md, the named CLAUDE.md/AGENTS.md and required reports. Write only the declared scope. If this step writes product code, implement its binding cases, run every Gate and record each command + exit code. Write `outputs/NN_<slug>.md` (≤40 lines), ending with `## Cierre` plus three placeholders if terminal; then append the mandatory terminal suffix below when it is terminal.
 ```
 
-After the last step: the user performs the manual QA checklist in `FEATURE_<SLUG>.md` §7. Any defect found becomes a new ad-hoc fix request or a new small feature plan — there is no automated remediation loop.
+**Mandatory terminal suffix — append this verbatim to whichever launcher is final, including `01`:**
+
+```text
+Automatically invoke route 5 `RECONCILE FEATURE` in this same session: read `agentic-planning-kit/PROMPT_INIT.md`, execute `MODE: RECONCILE_FEATURE`, `USER: <USER>`, `FEATURE_PATH: .agentic_planning/<USER>/_feature_<slug>/`. Do not ask the user to launch it. Keep `## Cierre` and replace its three placeholder lines with map/pointer, index and status results; do not finish successfully if it fails.
+```
+
+After the successful closed last step, the user performs `FEATURE_<SLUG>.md` §7 manual QA. A defect becomes a new ad-hoc fix request or small feature plan — no automated remediation loop.
 ````
 
 ## Template — the `## Features` row in `.agentic_planning/<USER>/SESSION.md`
 
-Never create a global index. Edit only your own session file, inserting new features at the top of its table and flipping statuses in place. User-facing prose in Spanish.
+The planner edits only its own session file, inserting features at the top and flipping superseded rows. Routes 0/5 regenerate the global index; root route 5 is its sole feature-close reconciler and writer of `✅ Ejecutada`. User-facing prose is Spanish.
 
 ````markdown
 ## Features

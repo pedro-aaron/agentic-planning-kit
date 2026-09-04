@@ -30,8 +30,8 @@ directory to resolve it.
 Turn a project idea in an empty or planning-only workspace into one reviewable blueprint, zero or
 more human refinement cycles recorded as decisions, an explicitly authorized **F00 scaffold plan that
 is executable the moment it exists**, a bootstrap `WORKSPACE_MAP.md` separating `EXISTING`, `PLANNED`
-and `UNKNOWN` claims, and a first-feature roadmap that becomes plannable once F00 executes and INIT
-makes the map factual.
+and `UNKNOWN` claims, and a first-feature roadmap that becomes plannable once F00 executes, its
+terminal INIT makes the map factual, and route 5 closes that execution.
 
 This prompt never writes product code, source directories, package manifests, dependency lockfiles,
 Dockerfiles, compose services, CI, databases, cloud resources, environments or credentials.
@@ -69,8 +69,8 @@ recipe or quality gate already exists in the target.
 
 ## The project tree
 
-Everything lives in the invoking user's session, and nothing else in the workspace changes until
-`MATERIALIZE`:
+Everything lives in the invoking user's session; the only pre-MATERIALIZE exception is route-0-style
+session/global-index initialization when that session is absent:
 
 ```text
 .agentic_planning/<USER>/_project_<slug>/
@@ -184,7 +184,7 @@ phrase never substitutes for readiness.
 
 Produce the first complete proposal from `PROJECT_INTENT` without making the human answer everything
 up front.
-1. Verify `.agentic_planning/<USER>/` exists; if not, create it with a minimal `SESSION.md` and say so.
+1. Verify `.agentic_planning/<USER>/` exists; if absent, create the exact route-0 `SESSION.md` tables and refresh the managed global index; otherwise preserve it.
 2. Classify the target. `partial_conflict` stops with `BLOCKED_CONFLICT` and the exact paths.
 3. Derive a readable `<slug>` (kebab-case, ≤4 words). If `_project_<slug>/` already exists under this
    user, stop and ask whether to refine it or pick another slug.
@@ -254,10 +254,10 @@ rewrite reality to match intent.
 
 ### F00 feature-plan contract
 
-Generate `F00/` using the anatomy and safety rules of `PROMPT_CREATE_FEATURE.md` — single-session
-steps with explicit dependencies, one trigger per step, a suggested model effort each, handoff
-reports ≤40 lines, a manual QA checklist in Spanish; no cycles, no DAG json, no rubrics — with these
-narrowly scoped greenfield exceptions:
+Generate `F00/` using `PROMPT_CREATE_FEATURE.md`'s anatomy and safety rules — single-session steps,
+explicit dependencies, one trigger each, effort hints, ≤40-line handoffs and Spanish QA. Its terminal
+launcher reserves `## Cierre` plus three result lines, runs `MODE: INIT`, verifies a factual map, then
+runs route 5 **in that same session** with `FEATURE_PATH: .agentic_planning/<USER>/_project_<slug>/F00/`; no cycles/DAG json/rubrics — with these greenfield exceptions:
 
 - F00 grounds in the blueprint, the decisions, the official evidence and the `EXISTING` root facts;
   it may consume the `PLANNED` claims the blueprint allowlists for F00.
@@ -269,8 +269,8 @@ narrowly scoped greenfield exceptions:
 
 No other feature gets these exceptions.
 
-**F00 is executable as soon as this call finishes.** There is no registration, reconciliation,
-integration or approval between materialization and the first step. Print its trigger path.
+**F00 is executable as soon as this call finishes.** No manual registration, reconciliation,
+integration or approval blocks its first step; its terminal launcher runs factual INIT then route 5 in one session. Print its trigger path.
 
 F00's scope is limited to: the selected toolchain and package manifests plus lock policy; a minimal
 installable, buildable source skeleton; a minimal non-business entrypoint when needed to prove build
@@ -290,17 +290,14 @@ explicitly authorized, ephemeral, namespaced and cleanup-verified; zero business
 Anonymous reads from public registries and official documentation may be declared F00 command
 effects; authenticated registries, accounts and any external state write are blocked.
 
-Required execution shape, one trigger per step: read-only target audit → scaffold and toolchain steps
-in dependency order (manifests → source layout → quality config, which creates the first gates →
-docs and env) → factual INIT using `PROMPT_INIT.md` (trigger 1) → the user performs the manual QA
-checklist in `FEATURE_F00.md` §7.
+Required execution shape: read-only audit → scaffold/toolchain (manifests → source layout → quality
+config/first gates → docs/env) → terminal launcher runs INIT, confirms factual, then route 5 for `F00`
+in that same session → user manual QA in `FEATURE_F00.md` §7.
 
 ### After F00
 
-Once F00's steps finish and INIT sets `Map maturity: factual`, the user runs the manual QA checklist.
-If it passes, the roadmap intents in blueprint §10 become plannable: run route 2 once per intent with
-that intent's ready-to-paste description as the feature text, and from then on every code-writing
-step passes the gates F00 created. Defects found in QA become ad-hoc fixes before planning F01+.
+Once F00's terminal launcher has factual INIT and successful route 5 (execution closed; QA pending),
+the user runs manual QA. If it passes, blueprint §10 intents become plannable through route 2; every code step then passes F00's gates. Defects found in QA become ad-hoc fixes before F01+.
 
 ### Managed pointer block
 
@@ -313,9 +310,8 @@ Hydrate existing or created `CLAUDE.md` and `AGENTS.md` with this idempotent blo
 Read `.agentic_planning/<USER>/_project_<slug>/PROJECT_BLUEPRINT.md` and `WORKSPACE_MAP.md` before
 work. The map is `bootstrap`: only `EXISTING` claims are facts; F00 may consume its allowlisted
 `PLANNED` design inputs; `UNKNOWN` blocks the work that depends on it. No product feature other than
-F00 may be planned until F00 executes and INIT sets map maturity to `factual`. Planning routes live
-in `agentic-planning-kit/TRIGGERS.md`; every route writes under your own
-`.agentic_planning/<username>/`.
+F00 may be planned until it executes, INIT sets map maturity `factual`, and its terminal route 5
+reconciles the map, pointers and global index. Planning routes live in `agentic-planning-kit/TRIGGERS.md`; plans live under your own `.agentic_planning/<username>/`.
 <!-- agentic-routes:end -->
 ```
 
@@ -332,8 +328,9 @@ When F00's INIT sets the map to factual, it replaces this block with the normal 
 - Never write a secret value, token, password, private key, authenticated URL or DSN into any
   artifact — classes and environment-variable key names only. If `PROJECT_INTENT` carries possible
   secret material, write a redacted placeholder and warn.
-- Write only under `.agentic_planning/<USER>/`, plus the root artifacts `MATERIALIZE` is allowed.
-  **Never write into another user's session directory**, for any reason.
+- Write only under `.agentic_planning/<USER>/`, plus the root artifacts `MATERIALIZE` is allowed or
+  the route-0 global index needed to initialize an absent session. **Never write into another user's
+  session directory**, for any reason.
 - Preserve existing user files; never adopt, overwrite, move or delete an ambiguous target. A risky
   unknown is a blocker, not permission to choose a convenient default. Nothing here may weaken F00's
   binding invariants or route 2's map requirements.
