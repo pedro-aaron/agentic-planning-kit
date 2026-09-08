@@ -155,9 +155,7 @@ decision with **Rationale**, **Alternatives**, **Consequences**, **Affects** (bl
 - Changing a decision **appends** a new one that supersedes the old and flips the old row's status.
   History is never rewritten and never deleted.
 - `ASSUMED_BY_POLICY` is allowed only for reversible, low-risk defaults visible in the proposal, and is forbidden for data, security, privacy, secret, production and irreversible decisions. `MATERIALIZE` accepts every visible one as a batch; to reject or change one, run `REFINE` first.
-- `ASSUMED_BY_POLICY` is allowed only for reversible, low-risk defaults visible in the proposal, and
-  is forbidden for data, security, privacy, secret, production and irreversible decisions.
-  `MATERIALIZE` accepts every visible one as a batch; to reject or change one, run `REFINE` first.
+
 ## Readiness gate
 
 Readiness is boolean, not a score, and lives in blueprint §10 as `PASS` or `NOT READY` with the
@@ -254,13 +252,13 @@ rewrite reality to match intent.
 
 ### F00 feature-plan contract
 
-Generate `F00/` using `PROMPT_CREATE_FEATURE.md`'s anatomy and safety rules — single-session steps,
-explicit dependencies, one trigger each, effort hints, ≤40-line handoffs and Spanish QA. Its terminal
-launcher reserves `## Cierre` plus three result lines, runs `MODE: INIT`, verifies a factual map, then
+Generate `F00/` using `PROMPT_CREATE_FEATURE.md`'s step, compact-launcher and handoff templates and safety rules:
+single-session steps, dependencies, effort hints, ≤40-line result reports and Spanish QA. Its terminal
+step/launcher reserves `## Cierre` plus three result lines, runs `MODE: INIT`, verifies a factual map, then
 runs route 5 **in that same session** with `FEATURE_PATH: .agentic_planning/<USER>/_project_<slug>/F00/`; no cycles/DAG json/rubrics — with these greenfield exceptions:
 
-- F00 grounds in the blueprint, the decisions, the official evidence and the `EXISTING` root facts;
-  it may consume the `PLANNED` claims the blueprint allowlists for F00.
+- Each F00 step names needed blueprint/map headings, accepted decision IDs and official-evidence rows;
+  include global constraints, `EXISTING` root facts and only the blueprint's F00-allowlisted `PLANNED` claims.
 - F00 needs no factual seams or recipes, because its purpose is to create the first ones. Reports
   mark new patterns as `thin` until INIT observes them. Its steps run **strictly sequentially**.
 - Gates apply only from the step that creates them onward — **the gauntlet cannot precede its own
@@ -307,8 +305,8 @@ Hydrate existing or created `CLAUDE.md` and `AGENTS.md` with this idempotent blo
 <!-- agentic-routes:begin — managed by agentic-planning-kit. -->
 ## Project blueprint and bootstrap map
 
-Read `.agentic_planning/<USER>/_project_<slug>/PROJECT_BLUEPRINT.md` and `WORKSPACE_MAP.md` before
-work. The map is `bootstrap`: only `EXISTING` claims are facts; F00 may consume its allowlisted
+Before work, read global constraints and the relevant sections of `.agentic_planning/<USER>/_project_<slug>/PROJECT_BLUEPRINT.md`
+and `WORKSPACE_MAP.md`; F00 steps name them. The map is `bootstrap`: only `EXISTING` claims are facts; F00 may consume allowlisted
 `PLANNED` design inputs; `UNKNOWN` blocks the work that depends on it. No product feature other than
 F00 may be planned until it executes, INIT sets map maturity `factual`, and its terminal route 5
 reconciles the map, pointers and global index. Planning routes live in `agentic-planning-kit/TRIGGERS.md`; plans live under your own `.agentic_planning/<username>/`.
@@ -334,7 +332,6 @@ When F00's INIT sets the map to factual, it replaces this block with the normal 
 - Preserve existing user files; never adopt, overwrite, move or delete an ambiguous target. A risky
   unknown is a blocker, not permission to choose a convenient default. Nothing here may weaken F00's
   binding invariants or route 2's map requirements.
-- Nothing here may weaken F00's binding invariants or route 2's map requirements.
 
 ## Phase completion responses
 

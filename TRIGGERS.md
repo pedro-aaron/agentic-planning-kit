@@ -2,6 +2,7 @@
 
 Copy-paste **one block** into a fresh code-agent session (Claude Code / Cursor / Codex). Start every
 session at the **workspace root** of the target workspace.
+Each named prompt is the route's complete specification; its launcher supplies the inputs.
 
 - **First time in a clone: run 0 OPEN SESSION.** It creates `.agentic_planning/<username>/` and
   refreshes the global session index; per-user routes then write inside it. Nothing else needs installing.
@@ -56,12 +57,7 @@ Read agentic-planning-kit/PROMPT_INIT.md and execute it as your complete task sp
 USER: <<tu-username>>
 MODE: INIT
 
-Start at the workspace root. This trigger is for a project with real implementation signals. If the target is empty/planning-only, stop without writes and direct me to trigger 3A.
-First read any existing CLAUDE.md / AGENTS.md / README.md and reconcile with them. Map EACH subproject and compose. Capture stack/libs, commands/cwd, hard rules, contracts, data-store owner + access mode (`read-write|append-only|read-only|bootstrap-write/runtime-read-only|UNKNOWN`) + lifecycle boundary + principals/env-key names + allowed/forbidden operations, migration protocol only for writable phases, seams, conventions/principles and recipes. Also capture each subproject's QUALITY GATES: the deterministic test/lint/typecheck commands with exit-code semantics that code-writing feature steps must pass, quoted verbatim with cwd and parallel classification; a gate that does not exist is MISSING — never invent or aspirationally add one; coverage is observed-only (record the figure only if an existing command emits it, no thresholds); no mutation testing, no BDD runners. Write one WORKSPACE_MAP.md at the workspace root and mark map maturity factual only when its required claims are backed by implementation evidence.
-For safe multi-agent planning, also map command side effects and every shared mutable resource/single-writer hotspot: manifests/lockfiles, generated/cache/temp dirs, composition roots/registries, compose projects, fixed ports, volumes/networks, databases/services and reports. Record `shared_read|exclusive|UNKNOWN`, isolation keys/namespaces and same-checkout constraints; UNKNOWN means serialize, never assume safety.
-If invoked inside greenfield F00, reconcile the bootstrap claims: real evidence promotes PLANNED to EXISTING, drift becomes UNKNOWN, and unresolved planned work stays PLANNED. Use map maturity mixed until every foundation-required claim is factual; INIT alone never opens F01+.
-Then hydrate the agent entry points: inject the idempotent managed pointer block (between the agentic-routes markers) into CLAUDE.md and AGENTS.md (create them minimally if absent; in a workspace, each subproject's too), and into Cursor rules ONLY if the workspace already uses Cursor (a .cursor/ dir or .cursorrules) — for Cursor, write a dedicated .cursor/rules/agentic-routes.mdc, don't edit the user's rule files. Keep the block a pointer to the map, never a copy.
-Writes limited to WORKSPACE_MAP.md, those managed blocks, and — only inside an explicit F00 context — that F00's own reconciliation note under .agentic_planning/<USER>/. Do not write into any other user's session directory. Do not run build/test/migration commands or start servers; only read the commands they declare. Never echo secrets. Mark anything you can't determine under "Unknowns". Print a 3-line summary (map maturity, hydrated entry points, concurrency UNKNOWN count, quality gates found/MISSING per subproject) when done.
+Generate/reconcile WORKSPACE_MAP.md and its managed pointers; write no product code.
 ```
 
 `WORKSPACE_MAP.md`, managed entry-point blocks and the global index are shared close resources. The
@@ -77,12 +73,7 @@ Read agentic-planning-kit/PROMPT_CREATE_FEATURE.md and execute it as your comple
 
 USER: <<tu-username>>
 
-Before anything, read WORKSPACE_MAP.md at the workspace root plus CLAUDE.md / AGENTS.md; if the map is missing, stale for touched subprojects, lacks Quality gates, or lacks the `Existing docs & planning` global-close entry, stop and ask me to run INIT (trigger 1) first. If .agentic_planning/<USER>/ does not exist, stop and tell me to run trigger 0.
-Plan only — write NO product code. Generate .agentic_planning/<USER>/_feature_<slug>/ with exactly: FEATURE_<SLUG>.md (scope, binding contract, fixed decisions, invariants — including "the gauntlet never weakens" —, a Mermaid execution graph, and a manual QA checklist in Spanish that I will execute myself, focused on acceptance: UX, flujos en dispositivo, visual — not correctness the gates already prove), 2–6 single-session step files under steps/ with explicit dependencies planned for maximum safe parallelism (steps without a dependency edge run in parallel; serialize only for overlapping writes or shared exclusive resources from the map — gate commands classified exclusive count as shared resources), each step carrying a one-line suggested model effort (tier low/medium/high + examples for Claude Code, Codex and Cursor), and TRIGGERS.md with ONE launcher per step grouped by parallel level — no orchestrator, no DAG json, no model-routing matrices, no rubrics, no verification/eval/fix cycles, no coverage thresholds, no mutation testing, no JSON artifacts of any kind.
-For every step that writes product code: derive BINDING TEST CASES from the feature contract (§3) into its Spec — the executor implements them, may add cases, never removes them — and list the subproject's Quality gates commands the step must run and pass BEFORE writing its handoff report, recording each command + exit code in the report along with every test file touched; existing tests are never deleted, skipped or loosened to pass. If a needed gate is MISSING in the map, add an explicit tooling-bootstrap step or record the degradation in the feature doc — never silently. Steps that write no product code skip gates.
-Each step grounds in the map (subproject, seam, recipe, blessed lib), writes only its declared scope, and finishes with a short handoff report outputs/NN_<slug>.md (≤40 lines). Acceptance QA is mine, done manually after the steps.
-Also register the feature in MY session index `.agentic_planning/<USER>/SESSION.md`: add its row at the top of `## Features` as 📝 Diseñada, with its purpose and impacts; flip any superseded row of mine. The final step must join every branch, write its preliminary handoff, then automatically invoke route 5 in the same session before success; route 5 reconciles map/pointers, rebuilds the global index and flips only my row to ✅ Ejecutada. Planning itself never edits another user's session or the global index.
-Print a short summary when done: slug, step list with dependencies/parallel groups, touched subprojects, gates per step, assumptions.
+Plan only — write no product code.
 
 Feature to build:
 <<escribe aquí lo que quieres que haga el feature>>
@@ -149,11 +140,7 @@ Read agentic-planning-kit/PROMPT_ANALYZE_BEFORE_DEVELOP.md and execute it as you
 
 USER: <<tu-username>>
 
-Start at the workspace root. Read WORKSPACE_MAP.md and the applicable CLAUDE.md / AGENTS.md before analyzing. If .agentic_planning/<USER>/ does not exist, stop and tell me to run trigger 0. Analyze only: write no product code and do not create a feature plan. Ground codebase claims in path:symbol evidence and distinguish facts, intended behavior, external evidence, inferences, recommendations and unknowns.
-Answer the direct question, trace the relevant behavior end to end, and assess architectural, contract/data, security/tenancy, compatibility, operational, UX, performance and testing implications where material. Always perform a bounded current-research pass using primary sources. For technology or GitHub candidates, verify releases, meaningful maintenance, support, compatibility, security, governance and license; popularity alone is not evidence. Prefer the workspace's existing seams and blessed choices unless current evidence demonstrates a real gap.
-Write exactly one new report at .agentic_planning/<USER>/_analysis_<slug>/ANALYSIS_<SLUG>.md and leave every other pre-existing file untouched.
-Also register it in MY session index .agentic_planning/<USER>/SESSION.md: add ONE row at the top of the "## Análisis" table with the link, the question plus your headline recommendation, the report's status (✅ Conclusivo | ⚠️ Condicional | ⛔ Bloqueado, plus 🕓 when readiness is NEEDS_DECISION) and the date. Write only your own row, in your own session file; never touch another user's directory and never create a global index.
-Print the report path, main conclusion, highest risk, research status, next decision and confirmation that the index row was added.
+Analyze only — write no product code or feature plan.
 
 Analysis request:
 <<describe la nueva funcionalidad, el comportamiento existente o la pregunta a investigar>>
@@ -191,9 +178,12 @@ Each plan ships its own `TRIGGERS.md` with one launcher per step. Open each in a
 dependency order; steps in the same parallel group may run simultaneously. The shape is always:
 
 ```text
+Start at the workspace root.
 Read .agentic_planning/<username>/_feature_<slug>/steps/NN-<slug>.md and execute it as your complete task spec.
-Start at the workspace root. Before any code, read WORKSPACE_MAP.md, the layer CLAUDE.md/AGENTS.md it names, and the prior reports it lists. Write only within the step's declared scope. If the step writes product code: implement its binding test cases, then run its Gates commands and record each command + exit code in the report; never delete, skip or loosen existing tests to pass. Write outputs/NN_<slug>.md (≤40 lines). **A terminal report ends with `## Cierre` plus three placeholder/result lines; its session then automatically runs route 5 and replaces those lines before success.**
 ```
+
+The terminal launcher also invokes route 5 in that session after its preliminary report; it fills
+`## Cierre` with the close results before success. The generated plan supplies that explicit suffix.
 
 Two people executing steps that touch the same product files is an ordinary conflict — resolve it
 with your version-control system, the way you would for any other change. The kit's disjoint write

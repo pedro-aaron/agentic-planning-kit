@@ -14,8 +14,8 @@ generated workspace map.
 > so ordinary planning stays isolated on `main`; each feature then closes through one explicit,
 > exclusive reconciliation of the shared map, pointers and global user index.
 
-The concurrency model is one page: [`SESSIONS.md`](./SESSIONS.md). The copy-paste launchers are in
-[`TRIGGERS.md`](./TRIGGERS.md).
+The concurrency model is [`SESSIONS.md`](./SESSIONS.md). Compact launchers in [`TRIGGERS.md`](./TRIGGERS.md)
+point to canonical prompts; steps name exact context sections and handoffs record results without repeating specs.
 
 ## Install
 
@@ -97,7 +97,7 @@ EMPTY / PLANNING-ONLY TARGET
 - **Parallel-friendly and cheap.** Dependencies live in a human-readable Mermaid graph and
   independent steps run concurrently — with no DAG json, no orchestrator, no concurrency contracts.
   Model choice is one effort hint per step.
-- **Contracts defined once** (feature doc §3) and mirrored, never re-derived.
+- **Contracts defined once** (feature doc §3) and cited by clause; binding cases stay in steps, never re-derived.
 - **Every step grounds itself** ("Before any code, read …") in the factual workspace map plus only
   the prior reports it truly needs.
 - **New code imitates existing code**: each step names the seam (map §8), the recipe + exemplar
