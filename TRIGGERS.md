@@ -1,4 +1,4 @@
-# Triggers — Agentic Planning Kit 3.2
+# Triggers — Agentic Planning Kit 3.3
 
 Copy-paste **one block** into a fresh code-agent session (Claude Code / Cursor / Codex). Start every
 session at the **workspace root** of the target workspace.
@@ -11,6 +11,8 @@ Each named prompt is the route's complete specification; its launcher supplies t
   executing step automatically invokes **5 RECONCILE FEATURE** after its preliminary handoff and before success.
 - Empty or planning-only target: run **3A PROPOSE**, optionally repeat **3B REFINE**, then
   explicitly run **3C MATERIALIZE**. F00's terminal step runs INIT and route 5 in one session before route 2 for F01+.
+- Existing code can use **6 PLAN HARDENING** after INIT. Run **7 SECURITY AUDIT** on demand with
+  or without a feature plan or workspace map.
 
 Every block starts with `USER:`. Put **your** username there — lowercase `[a-z0-9-]`, 2–32
 characters. It is a directory name, not an account: the kit never checks it against a remote, a
@@ -66,12 +68,16 @@ ordinary Markdown conflict and rerun route 5.
 
 ---
 
-## 2 · CREATE FEATURE — plan a feature → `.agentic_planning/<username>/_feature_<slug>/`
+## 2 · CREATE FEATURE — base profile for features and prototypes
+
+Base quality and inline security apply by default. Add `EXTRA_CHECKS: mutator` to include
+mutation testing, or list other optional checks by name. Use `MAX_SESSIONS: 2` for safe overlap.
 
 ```text
 Read agentic-planning-kit/PROMPT_CREATE_FEATURE.md and execute it as your complete task spec.
 
 USER: <<tu-username>>
+MAX_SESSIONS: 1
 
 Plan only — write no product code.
 
@@ -172,10 +178,40 @@ Markdown conflict and rerun this route rather than pretending the close succeede
 
 ---
 
+## 6 · PLAN HARDENING — extended quality and full security
+
+Requires a factual workspace map. Execute the generated step triggers when ready.
+
+```text
+Read agentic-planning-kit/PROMPT_HARDENING_AND_AUDIT.md, section Hardening, and follow its planning workflow.
+
+USER: <<tu-username>>
+MAX_SESSIONS: 1
+TARGET:
+<<describe las rutas o módulos, el comportamiento que debe conservarse y los objetivos de hardening>>
+```
+
+---
+
+## 7 · SECURITY AUDIT — standalone, base by default
+
+Set `AUDIT: FULL` for the deeper source review and independent verification. Omit `TARGET`
+to review the current working tree. Reports stay under the owner session.
+
+```text
+Read agentic-planning-kit/PROMPT_HARDENING_AND_AUDIT.md, section Security audit, and run the standalone audit.
+
+USER: <<tu-username>>
+AUDIT: BASE
+TARGET: <<rutas locales dentro del workspace, u omite esta línea>>
+```
+
+---
+
 ## Step execution
 
 Each plan ships its own `TRIGGERS.md` with one launcher per step. Open each in a fresh session, in
-dependency order; steps in the same parallel group may run simultaneously. The shape is always:
+the plan's launch order and session budget. The shape is always:
 
 ```text
 Start at the workspace root.

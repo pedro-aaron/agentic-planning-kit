@@ -6,7 +6,7 @@ You are a code agent (Claude Code / Cursor / Codex) running at the **root of a w
 
 ## Goal
 
-Produce `WORKSPACE_MAP.md` at the workspace root: a **factual map of the workspace** that the feature-planning workflow (`PROMPT_CREATE_FEATURE.md`) consumes to ground every step it generates. This file is the **per-workspace adapter** — it is what makes the generic feature prompt work in this specific workspace. Get it right and every future feature plan inherits accurate paths, commands, rules, seams, shared mutable-resource hazards, isolation keys for safe multi-agent parallel execution, **and the quality gates** — the deterministic, exit-code-verified commands that code-writing steps must pass before finishing.
+Produce a factual `WORKSPACE_MAP.md` at the workspace root. It grounds feature plans in the workspace's paths, commands, rules, seams, shared resources, isolation keys and required or opt-in quality gates.
 
 **Applicability gate — this is the brownfield/factual route.** Before writing, classify the intended target from observed files:
 
@@ -38,7 +38,7 @@ conflicts `UNKNOWN` with evidence; (3) record drift, citing the relevant `DECISI
 
 ## MODE `RECONCILE_FEATURE` — mandatory final-step close
 
-Apply **Constraints** below. Canonicalize `FEATURE_PATH` under `.agentic_planning/<USER>/` to exactly one `_feature_<slug>/` or `_project_<slug>/F00/` and one invoking-session row (Features for a feature; Proyectos for F00). It runs **inside the last step after all gates and its preliminary handoff**, never rerunning gates/builds/migrations. Complete all preflight before writes: graph outputs for every declared step; exit `0` evidence for every applicable declared code gate; factual normal map, or factual F00 map after terminal INIT (gates before F00's gate-bootstrap are `n/a`); writable map/pointer/index targets. If any check fails, stop without marking completion. Otherwise, before the handoff is declared complete:
+Apply **Constraints** below. Canonicalize `FEATURE_PATH` under `.agentic_planning/<USER>/` to exactly one `_feature_<slug>/` or `_project_<slug>/F00/` and its invoking-session row. Run in the final step after the preliminary handoff. Before any writes, verify every step output, a factual map (for F00, after terminal INIT), writable map/pointer/index targets and exit `0` evidence for all plan-bound workspace gates, including selected opt-ins (F00 gates before bootstrap are `n/a`). For plans with a `PROFILE`, apply the [shared close evidence criteria](./PROMPT_HARDENING_AND_AUDIT.md#close-evidence) to base security and any extended UB checks and full audit. For legacy plans, apply their original binding gates. Stop before writes if preflight fails. Otherwise:
 
 1. Update only affected factual map sections; upsert the `Existing docs & planning` global-close pointer and classify `WORKSPACE_MAP.md`, `.agentic_planning/README.md` and managed entry-point blocks `exclusive`; apply **Hydrate the agent entry points** exactly to root/affected subprojects and only present Cursor/other entry points, preserving text outside markers.
 2. Create `.agentic_planning/README.md` with an H1/explanation, or insert `<!-- agentic-planning-index:begin — managed by agentic-planning-kit -->` / `<!-- agentic-planning-index:end -->` if missing; rebuild only that block, sorted by direct-child username, as `## Usuarios` rows `| <user> | [SESSION.md](./<user>/SESSION.md) |`. Do not copy status or feature rows: sessions are canonical.
@@ -52,7 +52,7 @@ Preserve prose outside that block. The human scheduler must serialize routes 0/5
    - **Analyze `docker-compose*.yml` / `compose*.yaml` in full when present — this is fundamental.** Enumerate every service (name, image/build, published `ports`, `volumes`, `networks`, `depends_on`, `healthcheck`) and its env (`environment:` / `env_file:` keys **by name**, never values). Compose is the ground truth for the run/test commands (§4), the data store and how the dev DB is reached (§6), and the dev environment as a whole. Note override/profile files (`docker-compose.override.yml`, `*.dev.yml`, `*.prod.yml`) and which one is the default `up`.
 2. **Detect stack & toolchain, and the key libraries actually used.** From manifests (`package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `Cargo.toml`, `pom.xml`/`build.gradle`, `Gemfile`, `composer.json`, `*.csproj`, Dockerfiles, compose) **and from how they're imported in real code**. Record languages, frameworks, package managers, runtime versions, and the **blessed choice per concern** (HTTP client, ORM/data access, validation, state management, styling/UI, testing, logging…). When more than one option appears, note which is the canonical one and which is legacy/being-phased-out — so a new feature picks the right one.
 3. **Find commands and their concurrency effects.** Extract the **exact** build / run / test / lint commands from `scripts` blocks, `Makefile`, `Taskfile`, `justfile`, CI workflows, compose services. Quote them verbatim. Note the working directory each must run from. From declarations/config only, identify source/generated/cache/temp/report writes, fixed ports, compose project/volumes/networks, DB/service state and any supported isolation key/namespace. Classify each command `parallel-safe`, `parallel-safe with isolation`, `exclusive`, or `UNKNOWN`; `UNKNOWN` means future planners serialize it. Do not execute commands during INIT.
-4. **Identify the quality gates.** From the commands found in step 3, mark which ones serve as **deterministic quality gates** — the commands a code-writing feature step must run and pass (exit 0) before it may finish: test suites, lint/format checks, type checks, and any other check with unambiguous exit-code semantics. Quote each verbatim with its cwd and parallel classification, and record what it proves (unit correctness, integration against a live service, style, types…). A gate that does not exist for a subproject is **`MISSING`** — record the absence explicitly; never invent one, never propose installing one from INIT. If an existing command already emits a coverage figure at no extra cost, note it as **observed-only** (step reports may record the number; no threshold is ever enforced). Do **not** record mutation testing, BDD runners or coverage thresholds — gates are only what already exists and exits 0/1.
+4. **Identify the quality gates.** Record existing deterministic commands verbatim with cwd, applicability, parallel classification and what they prove. Mark existing project-required gates `required` and optional commands `opt-in` (for example mutation, broad integration suites or metrics when project policy permits deferring them). Retain mandatory checks and existing binding gates. A missing gate is `MISSING` with no invented command. Record coverage as observed-only unless the workspace enforces it.
 5. **Find hard rules / guardrails and integration hotspots.** The "never do X" constraints: e.g. tests run inside a container, never run a particular build tool from an agent, migrations must be reversible, do not commit `.env`, do not touch generated files. Pull these from `CLAUDE.md`/`AGENTS.md`/`CONTRIBUTING` and from obvious signals (committed lockfiles, `schemas/` snapshots, codegen markers). Also record single-writer files/areas that parallel feature work commonly converges on: package/lock manifests, generated outputs, composition roots, central registries, route tables, compose files, workspace maps and migration ledgers. Ground each hotspot; do not guess that a path is safe.
 6. **Find canonical contracts & schemas — and each data store's ownership/access protocol.** Record engine, owner and access mode: `read-write`, `append-only`, `read-only`, `bootstrap-write/runtime-read-only`, or `UNKNOWN`. Identify lifecycle/cutover boundaries, distinct principals/roles/env-key names, allowed/forbidden operations and server-side enforcement. Only for an authorized writable phase, discover migration mechanism/location/dev access/change protocol. For read-only/sealed stores, write `Migration tool: not applicable after boundary`, capture query seams plus immutability/negative-authorization verification, and never infer permission to mutate. If mode/owner/principal is unclear, record `UNKNOWN` so feature planning blocks rather than guesses. Ground all access in compose and verify any writable target is non-production local/dev.
 7. **Identify seams (attachment points).** For each common concern, find the precise `file:symbol` where new work hooks in — e.g. HTTP routing, the data/persistence layer, auth/tenant boundary, the UI navigation/routing, background jobs, the validation layer.
@@ -69,7 +69,7 @@ Preserve prose outside that block. The human scheduler must serialize routes 0/5
 
 > Generated by `agentic-planning-kit/PROMPT_INIT.md` on <YYYY-MM-DD>. Complements (does not replace) CLAUDE.md / AGENTS.md / README. Regenerate after structural changes. Every entry is grounded in a real file/command; see "Unknowns" for gaps.
 
-**Planning-map contract:** 4 — includes command side effects, single-writer hotspots, route-5 reconciliation and factual per-subproject quality gates.
+**Planning-map contract:** 5 — adds gate use (`required` or `opt-in`) to contract 4. Existing unlabelled gates retain required status until reclassified from project evidence.
 **Map maturity:** <factual normally; mixed only during an incomplete greenfield F00 reconciliation>
 <!-- Greenfield-origin workspace only: permanently preserve **Blueprint:** `.agentic_planning/<user>/_project_<slug>/PROJECT_BLUEPRINT.md`. While the map is not yet factual use **Greenfield gate:** `F00_PENDING`; the factual INIT changes only the gate to `FACTUAL_READY`, never removes the blueprint reference. -->
 
@@ -104,14 +104,14 @@ Preserve prose outside that block. The human scheduler must serialize routes 0/5
 | ...    | `...` | `...`     | `...`| `...`       | `...`          | parallel-safe / isolated by `<key>` / exclusive / UNKNOWN — <side effects> |
 
 ### Quality gates (deterministic, exit-code verified)
-The commands a code-writing feature step must run and pass before writing its handoff report (see `PROMPT_CREATE_FEATURE.md`). **Factual only** — `MISSING` means the gate does not exist; plans must then bootstrap it explicitly or degrade loudly, never silently.
+Declared commands and their use in a plan. `MISSING` means the command has yet to be established.
 
-| Module | Gate | Command (verbatim) | Proves | Run from (cwd) | Parallel classification | Status | Evidence |
-|--------|------|--------------------|--------|----------------|-------------------------|--------|----------|
-| ... | test / lint / typecheck / <other> | `...` | ... | ... | parallel-safe / exclusive / UNKNOWN | EXISTS / MISSING | `file` |
+| Module | Gate | Command (verbatim) | Proves / applies to | Run from (cwd) | Parallel classification | Use | Status | Evidence |
+|--------|------|--------------------|----------------------|----------------|-------------------------|-----|--------|----------|
+| ... | test / lint / typecheck / <other> | `...` | ... | ... | parallel-safe / exclusive / UNKNOWN | required / opt-in | EXISTS / MISSING | `file` |
 
-- **Coverage:** <observed-only — which command emits a figure, if any, or "none">. No thresholds are enforced.
-- **Not gates:** mutation testing, BDD runners, coverage thresholds — do not record aspirationally.
+- **Coverage:** <figure emitted by a declared command and any project-enforced threshold, or "none">.
+- **Legacy maps:** treat unlabelled existing gates as required. INIT or scoped reconciliation adds a label only when supported by source policy.
 
 ## 5. Hard rules / guardrails
 - <one bullet per rule; quote the source file. e.g. "Tests run inside the `api` container (`docker exec`) — not on host (CLAUDE.md)".>
@@ -246,7 +246,7 @@ Most targets of this kit are a **workspace holding several independent subprojec
 ## <subproject dir>   ← repeat this block per subproject
 - **Stack & blessed libs:** ...
 - **Commands (+cwd) & compose services:** ...
-- **Quality gates:** <gate → command (verbatim) + cwd + parallel classification + EXISTS/MISSING; coverage observed-only note; or "all MISSING" honestly>.
+- **Quality gates:** <gate → command (verbatim) + cwd + applicability + parallel classification + required/opt-in + EXISTS/MISSING + evidence; note coverage if declared>.
 - **Agent concurrency / resources:** <command classification, product/generated/cache/temp side effects, single-writer hotspots, shared_read/exclusive/UNKNOWN resources, isolation keys, same-checkout constraints, and same-checkout constraints or UNKNOWN>.
 - **Hard rules:** ...
 - **Canonical contracts & DB/access protocol:** <owner, access mode, lifecycle boundary, principals, allowed/forbidden ops, compose service, dev confirmation, migration tool only if writable, gotchas — or "no data store">

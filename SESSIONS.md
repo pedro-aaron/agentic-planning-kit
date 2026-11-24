@@ -16,6 +16,15 @@ queue, service or background orchestrator.
 
 Everyone works on `main`. That is the intended way to use this kit.
 
+## Execution budget
+
+One APK session does work at a time by default (`MAX_SESSIONS: 1`). Routes 2 and 6 can use an
+explicit `MAX_SESSIONS: 2` for ready steps with disjoint writes and no shared exclusive or
+unknown resources. F00 is serial. Heavy checks and standalone or full audits reserve an
+exclusive window. During a full audit, one independent delegate may use the sole active slot
+while the parent waits.
+See [Execution budget](./PROMPT_HARDENING_AND_AUDIT.md#execution-budget).
+
 ## The username
 
 The username is supplied by the human, in the `USER:` field that opens every trigger. It is
@@ -47,8 +56,9 @@ is no shared identity configuration.
     │   ├── FEATURE_<SLUG>.md
     │   ├── steps/NN-<slug>.md
     │   ├── TRIGGERS.md
-    │   └── outputs/NN_<slug>.md
-    └── _analysis_<slug>/ANALYSIS_<SLUG>.md
+    │   └── outputs/           # step handoffs + SECURITY_AUDIT.md for hardening
+    ├── _analysis_<slug>/ANALYSIS_<SLUG>.md
+    └── _audit_<slug>/AUDIT_<SLUG>.md
 
 WORKSPACE_MAP.md                 # shared — see below
 ```
@@ -59,10 +69,12 @@ WORKSPACE_MAP.md                 # shared — see below
 |---|---|---|
 | 0 · Open session | own `SESSION.md` + `.agentic_planning/README.md` managed index | **yes — exclusive** |
 | 1 · INIT | `WORKSPACE_MAP.md` + managed pointer blocks | **yes** |
-| 2 · Create feature | `.agentic_planning/<user>/_feature_<slug>/**` | no |
+| 2 · Create feature | own `_feature_<slug>/**` + `SESSION.md` feature row | no |
 | 3 · New project | own project plan; at 3C, bootstrap map + pointers | **yes at 3C** |
 | 4 · Analyze | `.agentic_planning/<user>/_analysis_<slug>/**` | no |
 | 5 · Reconcile feature | `WORKSPACE_MAP.md`, managed pointers, `.agentic_planning/README.md`, own status | **yes — exclusive** |
+| 6 · Plan hardening | own `_feature_<slug>/**` + `SESSION.md` feature row | no |
+| 7 · Security audit | own `_audit_<slug>/AUDIT_<SLUG>.md` | no |
 | Step execution | product code + `<user>/…/outputs/` | **yes** (the code) |
 
 ## Shared artifacts and why
@@ -82,12 +94,14 @@ plan's disjoint write scopes exist to make that rare, not to replace Git when it
 
 ## Global index and terminal reconciliation
 
-Route 0 creates or refreshes the index when a user opens a session. Every normal feature plan includes one final join step; after
-its gates and preliminary handoff, that step automatically runs route 5 before success. Route 5 verifies the handoffs,
-updates affected map facts and pointers, flips only the invoker's row to `✅ Ejecutada`, then rebuilds
+Route 0 creates or refreshes the index when a user opens a session. Every feature and hardening plan
+includes one final join step that runs route 5 after its required checks and preliminary handoff.
+Route 5 verifies the handoffs, updates affected map facts and pointers, flips only the invoker's row to `✅ Ejecutada`, then rebuilds
 the README block deterministically by username. `✅ Ejecutada` means execution/reconciliation closed,
 not manual acceptance. A failure leaves the feature unclosed; rerun route 5 after resolving the cause;
 manual QA still happens only after a successful close.
+
+Standalone security audits finish when their report is written. They leave the session and global indexes untouched.
 
 ## What the kit never does
 

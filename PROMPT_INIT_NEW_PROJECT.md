@@ -252,18 +252,23 @@ rewrite reality to match intent.
 
 ### F00 feature-plan contract
 
-Generate `F00/` using `PROMPT_CREATE_FEATURE.md`'s step, compact-launcher and handoff templates and safety rules:
-single-session steps, dependencies, effort hints, ≤40-line result reports and Spanish QA. Its terminal
-step/launcher reserves `## Cierre` plus three result lines, runs `MODE: INIT`, verifies a factual map, then
-runs route 5 **in that same session** with `FEATURE_PATH: .agentic_planning/<USER>/_project_<slug>/F00/`; no cycles/DAG json/rubrics — with these greenfield exceptions:
+Generate `F00/` using `PROMPT_CREATE_FEATURE.md`'s step, launcher and handoff templates, with dependencies,
+effort hints, ≤40-line reports and Spanish QA. Stamp `PROFILE: BASE` and `MAX_SESSIONS: 1` in `FEATURE_F00.md`.
+The terminal step reserves `## Cierre` plus three result lines, runs `MODE: INIT`, verifies a factual map, then
+runs route 5 **in that same session** with `FEATURE_PATH: .agentic_planning/<USER>/_project_<slug>/F00/`.
+Previously generated F00 plans keep their original close requirements. Apply these greenfield exceptions:
 
 - Each F00 step names needed blueprint/map headings, accepted decision IDs and official-evidence rows;
   include global constraints, `EXISTING` root facts and only the blueprint's F00-allowlisted `PLANNED` claims.
 - F00 needs no factual seams or recipes, because its purpose is to create the first ones. Reports
   mark new patterns as `thin` until INIT observes them. Its steps run **strictly sequentially**.
-- Gates apply only from the step that creates them onward — **the gauntlet cannot precede its own
-  creation**. From that step on, every code-writing step passes the just-created gates and records
-  each command and exit code.
+- Required project gates apply from the step that creates them onward. From that step on, each code-writing
+  step passes the applicable required gates and records each command, cwd and exit code. Checks marked `opt-in`
+  require explicit selection in a later feature or hardening plan.
+- Before their handoff, steps changing code or security-affecting configuration, manifests or locks apply
+  [Base quality](./PROMPT_HARDENING_AND_AUDIT.md#base-quality) and the [base security audit](./PROMPT_HARDENING_AND_AUDIT.md#base).
+  Include those reads and checks in each applicable step spec and record their outcomes and evidence in its handoff,
+  including gaps. Record reasoned `n/a` in other steps. The base review starts before toolchain gates exist.
 
 No other feature gets these exceptions.
 
@@ -278,8 +283,8 @@ approved architecture and decision docs, agent pointers and local-safe wiring; a
 isolation documentation. It excludes business behavior and F01+ capabilities; production or staging
 mutation and deployment; live data, seeding, imports, migrations and schema changes, unless the
 blueprint makes an isolated local bootstrap foundation-critical and the human accepted it;
-credentials and secret values; anything not in the blueprint; and coverage thresholds, mutation
-testing or BDD runners — the first gates are only what exists and exits 0 or 1.
+credentials and secret values; anything outside the blueprint; and extended checks such as mutation testing,
+coverage thresholds or BDD runners. The first gates are deterministic commands exercised against the scaffold.
 
 Its binding invariants, on every step: zero secret material; zero staging, production, cloud or
 account mutation; dependency versions and locks matching the official evidence; data-store owner,
@@ -295,7 +300,8 @@ in that same session → user manual QA in `FEATURE_F00.md` §7.
 ### After F00
 
 Once F00's terminal launcher has factual INIT and successful route 5 (execution closed; QA pending),
-the user runs manual QA. If it passes, blueprint §10 intents become plannable through route 2; every code step then passes F00's gates. Defects found in QA become ad-hoc fixes before F01+.
+the user runs manual QA. If it passes, blueprint §10 intents become plannable through route 2 and
+future code steps pass the applicable required gates. Route 6 can plan hardening on the factual map.
 
 ### Managed pointer block
 
