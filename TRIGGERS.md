@@ -72,6 +72,8 @@ ordinary Markdown conflict and rerun route 5.
 
 Base quality and inline security apply by default. Add `EXTRA_CHECKS: mutator` to include
 mutation testing, or list other optional checks by name. Use `MAX_SESSIONS: 2` for safe overlap.
+For a React + shadcn/ui feature that needs custom icons, describe the concepts and where they appear
+in `Feature to build`. [Look & Feel workflow](./PROMPT_CREATE_FEATURE.md#look--feel-custom-icons)
 
 ```text
 Read agentic-planning-kit/PROMPT_CREATE_FEATURE.md and execute it as your complete task spec.

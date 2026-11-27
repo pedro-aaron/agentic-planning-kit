@@ -43,11 +43,18 @@ Every launcher takes `USER: <username>`. The owner's artifacts live in
 5. The terminal feature step invokes route 5 after collecting the handoffs and required evidence.
    Then run the feature's manual acceptance checklist.
 
+## Look & Feel
+
+Route 2 plans custom icons for React + shadcn/ui when a feature calls for distinctive product or
+brand iconography. It follows the project's icon workflow and uses `draw-icons` by Rony Kati to
+establish one when needed. For new projects, plan this work in the first relevant feature after
+F00. [Look & Feel workflow](./PROMPT_CREATE_FEATURE.md#look--feel-custom-icons)
+
 ## Portability
 
-APK ships the adapted UB and Cloudflare workflows as local Markdown. Base development and both
-security audit modes use the workspace's source, configuration and available evidence. They need no
-external skill installation. Hardening uses compatible existing tools or the pinned tool sources
+APK ships the adapted UB and Cloudflare workflows as local Markdown. Core development and both
+security audit modes use the workspace's source, configuration and available evidence. Custom icon
+work can add scoped skill setup. Hardening uses compatible existing tools or the pinned tool sources
 documented in the prompt. A scoped tooling setup can require a supported runtime or network access.
 Existing maps with unlabelled gates retain their binding checks. Run INIT to refresh gate
 classification from project evidence. Plans generated before profiles keep their original close

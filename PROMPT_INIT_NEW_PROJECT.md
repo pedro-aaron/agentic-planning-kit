@@ -121,8 +121,9 @@ is not rigor. Cover every applicable concern below inside its section — do not
 9. **F00 and concurrency**: F00's exact scaffold scope, non-goals, rollback and acceptance gates,
    plus the proposed single-writer hotspots, write scopes, resource modes and isolation keys.
 10. **Roadmap, risks and readiness**: the first-feature roadmap as a dependency graph with candidate
-    parallel fronts and a ready-to-paste route-2 description per intent; then risks, assumptions,
-    open unknowns with an owner each, and the readiness verdict.
+    parallel fronts and a ready-to-paste route-2 description per intent. If a React + shadcn/ui design
+    needs [custom icons](./PROMPT_CREATE_FEATURE.md#look--feel-custom-icons), plan them after F00.
+    Record risks, assumptions, open unknowns with an owner each, and the readiness verdict.
 
 Do not select a data owner, access mode, production target, secret mechanism, security boundary or
 irreversible operation merely because it is common. `no_store` is a valid, explicit data decision.

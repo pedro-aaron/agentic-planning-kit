@@ -59,10 +59,39 @@ Binding principles:
 - **Manual QA checklist for the user.** `FEATURE_<SLUG>.md` §7 lists concrete actions + expected results the user performs by hand (app screens, API calls, DB queries), written **in Spanish** (user-facing). This replaces every automated *acceptance* artifact. The checklist focuses on what gates cannot prove — UX, device flows, visuals, end-to-end acceptance — and need not re-test correctness the binding test cases already cover.
 - Generated planning, handoff and audit documents use Markdown. The human launchers and Mermaid graph provide scheduling without an orchestrator.
 
+## Look & Feel custom icons
+
+For route-2 UI work, confirm React and shadcn/ui in the affected subproject using the map and source.
+React manifests/usage and shadcn's `components.json` or source evidence from copied components can
+establish the stack. Reuse existing icons where they fit. Include custom icons when the feature
+requests them or calls for a product concept or brand treatment the current set cannot express.
+
+**Plan.** In §3 name each concept, where it appears, its sizes and states, and its relationship to
+the existing set. Reuse an established custom-icon workflow or use
+[`draw-icons` by Rony Kati](https://github.com/ronykax/skills/blob/main/skills/draw-icons/SKILL.md)
+when establishing one. Reference the chosen workflow in the step's reading list and put the
+integration requirements below in its `Spec`. Declare the writes for `icons.yaml`, sources and
+the full generated directory when using `draw-icons`. Serialize writes to shared icon sets.
+If the project lacks inline SVG support, plan a compatible React integration and declare any
+dependency and build config writes.
+If tooling is missing, declare the prerequisite or scope project-local setup in the execution plan,
+including any skill files and lock updates (`npx skills add ronykax/skills --skill draw-icons` and
+the skill's CLI prerequisites with a compatible runtime).
+
+**Execute.** Follow the project's workflow or `draw-icons`. For the latter, reuse `icons.yaml` or
+review a preview in the product UI and settle the icon style before creating the first config.
+Edit SVG sources and regenerate the set. Wire the scoped icons into the UI as inline SVGs that
+inherit `currentColor` and preserve component states. Give icon-only controls accessible names and
+hide decorative icons from assistive technology.
+
+**Verify.** Put the skill's `check`, `lint`, `render`, `sheet` and `build` in the step's `Gates` when
+using it, alongside applicable project gates. Inspect the renders and record results in the handoff.
+In §7, check the icons in their components at intended sizes and in light/dark modes where supported.
+
 ## Procedure
 
 1. **Parse the intent.** Restate the feature in one sentence. Derive `<slug>` (kebab-case, ≤4 words) and `<SLUG>` (UPPER_SNAKE). If `.agentic_planning/<USER>/_feature_<slug>/` already exists, stop and ask whether to supersede it or pick another slug.
-2. **Scope against the map.** Identify the touched subproject(s), the seams/recipes/blessed libs per subproject, **the Quality gates table per touched subproject** (note any `MISSING` gate now — it becomes a bootstrap step or a §6 degradation note), and what is explicitly out of scope. Check data-store access modes for anything the feature writes.
+2. **Scope against the map.** Identify the touched subproject(s), the seams/recipes/blessed libs per subproject, **the Quality gates table per touched subproject** (note any `MISSING` gate now — it becomes a bootstrap step or a §6 degradation note), and what is explicitly out of scope. Check data-store access modes for anything the feature writes and apply [Look & Feel](#look--feel-custom-icons) where relevant.
 3. **Write `FEATURE_<SLUG>.md`** using the template below (≤200 lines). §3 (contract) is the spine — be concrete: the binding test cases of every code step derive from it.
 4. **Decompose into single-session steps within the budget.** The final step depends on every terminal branch. Derive each code step's happy/negative/edge cases from §3 and write its step file (≤60 lines). For hardening, assign the final step ownership of current-scope extended evidence and the full audit before close.
 5. **Write compact `TRIGGERS.md`** — one step-file pointer in launch order. Append route 5 to the terminal launcher after required checks and preliminary handoff.
