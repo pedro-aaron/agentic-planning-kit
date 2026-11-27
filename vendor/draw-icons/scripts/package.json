@@ -1,0 +1,9 @@
+{
+  "name": "draw-icons",
+  "private": true,
+  "type": "module",
+  "description": "APK adaptation of the draw-icons CLI with bundled offline dependencies.",
+  "bin": {
+    "icons": "./icons.js"
+  }
+}

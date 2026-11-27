@@ -68,21 +68,20 @@ requests them or calls for a product concept or brand treatment the current set 
 
 **Plan.** In §3 name each concept, where it appears, its sizes and states, and its relationship to
 the existing set. Reuse an established custom-icon workflow or use
-[`draw-icons` by Rony Kati](https://github.com/ronykax/skills/blob/main/skills/draw-icons/SKILL.md)
-when establishing one. Reference the chosen workflow in the step's reading list and put the
-integration requirements below in its `Spec`. Declare the writes for `icons.yaml`, sources and
-the full generated directory when using `draw-icons`. Serialize writes to shared icon sets.
-If the project lacks inline SVG support, plan a compatible React integration and declare any
-dependency and build config writes.
-If tooling is missing, declare the prerequisite or scope project-local setup in the execution plan,
-including any skill files and lock updates (`npx skills add ronykax/skills --skill draw-icons` and
-the skill's CLI prerequisites with a compatible runtime).
+the bundled [`draw-icons` skill by Rony Kati](./vendor/draw-icons/SKILL.md) to establish one.
+Reference the workflow in the step's reading list and put the integration requirements in its
+`Spec`. For the bundled skill, give the workspace-relative reading path
+`agentic-planning-kit/vendor/draw-icons/SKILL.md` and the Node.js prerequisite. Use `node` with
+`agentic-planning-kit/vendor/draw-icons/scripts/icons.js`, resolving that path from the subproject's
+cwd in the step's commands. Declare writes for `icons.yaml`, sources and the full generated directory.
+Serialize shared icon set writes.
 
 **Execute.** Follow the project's workflow or `draw-icons`. For the latter, reuse `icons.yaml` or
 review a preview in the product UI and settle the icon style before creating the first config.
-Edit SVG sources and regenerate the set. Wire the scoped icons into the UI as inline SVGs that
-inherit `currentColor` and preserve component states. Give icon-only controls accessible names and
-hide decorative icons from assistive technology.
+Edit SVG sources and regenerate the set. Run the bundled CLI with Node.js from the subproject root.
+Use the project's inline SVG support or derive inline JSX/TSX components from the generated SVGs.
+Inherit `currentColor`, preserve component states, give icon-only controls accessible names and hide
+decorative icons from assistive technology.
 
 **Verify.** Put the skill's `check`, `lint`, `render`, `sheet` and `build` in the step's `Gates` when
 using it, alongside applicable project gates. Inspect the renders and record results in the handoff.

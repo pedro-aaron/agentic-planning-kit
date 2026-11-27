@@ -46,16 +46,17 @@ Every launcher takes `USER: <username>`. The owner's artifacts live in
 ## Look & Feel
 
 Route 2 plans custom icons for React + shadcn/ui when a feature calls for distinctive product or
-brand iconography. It follows the project's icon workflow and uses `draw-icons` by Rony Kati to
-establish one when needed. For new projects, plan this work in the first relevant feature after
-F00. [Look & Feel workflow](./PROMPT_CREATE_FEATURE.md#look--feel-custom-icons)
+brand iconography. It follows the project's icon workflow and can establish one with the bundled
+[`draw-icons` skill by Rony Kati](./vendor/draw-icons/SKILL.md). For new projects, plan this work
+in the first relevant feature after F00. [Look & Feel workflow](./PROMPT_CREATE_FEATURE.md#look--feel-custom-icons)
 
 ## Portability
 
 APK ships the adapted UB and Cloudflare workflows as local Markdown. Core development and both
-security audit modes use the workspace's source, configuration and available evidence. Custom icon
-work can add scoped skill setup. Hardening uses compatible existing tools or the pinned tool sources
-documented in the prompt. A scoped tooling setup can require a supported runtime or network access.
+security audit modes use the workspace's source, configuration and available evidence. The copied
+kit includes the custom-icon CLI and its dependencies for offline use with Node.js. Hardening uses
+compatible existing tools or the pinned tool sources documented in the prompt. A scoped hardening
+tool setup can require a supported runtime or network access.
 Existing maps with unlabelled gates retain their binding checks. Run INIT to refresh gate
 classification from project evidence. Plans generated before profiles keep their original close
 requirements. [Quality and audit workflow](./PROMPT_HARDENING_AND_AUDIT.md)
@@ -75,7 +76,7 @@ requirements. [Quality and audit workflow](./PROMPT_HARDENING_AND_AUDIT.md)
 
 | Artifact | Cap |
 |---|---|
-| The whole kit | 9 files · 1,800 lines |
+| Core kit (root documentation and license) | 9 files · 1,800 lines |
 | A route prompt | 300 lines (route 3: 350) |
 | `PROJECT_BLUEPRINT.md` | 400 lines · 10 sections |
 | `FEATURE_<SLUG>.md` | 200 lines |
@@ -94,5 +95,7 @@ agentic-planning-kit/
 ├── PROMPT_INIT_NEW_PROJECT.md
 ├── PROMPT_ANALYZE_BEFORE_DEVELOP.md
 ├── PROMPT_HARDENING_AND_AUDIT.md
-└── LICENSE
+├── LICENSE
+└── vendor/
+    └── draw-icons/  # bundled skill, CLI, dependencies and licenses
 ```

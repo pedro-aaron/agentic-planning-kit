@@ -1,0 +1,55 @@
+{
+  "_about": "Starting DNAs for a new set. Pick the one closest to the product's feel, copy its dna, add a style from its styles list, then tune it on the candidate preview.",
+  "pixel": {
+    "description": "retro bitmap look: one stroke is one pixel, built only from horizontal and vertical runs",
+    "styles": ["outline", "duotone"],
+    "dna": {
+      "pixel": true,
+      "stroke": 1, "grid": 12, "padding": 1,
+      "keylines": { "circle": 10, "square": 10, "portrait": [8, 10], "landscape": [10, 8] },
+      "corners": { "family": "sharp", "radius": { "large": 0, "small": 0 }, "largeThreshold": 8 },
+      "caps": "square", "joins": "miter", "angles": [0, 90], "detail": "medium", "minGap": 0.4,
+      "badge": { "position": "bottom-right", "size": 4, "gap": 1 },
+      "duotoneOpacity": 0.3
+    },
+    "notes": "sizes must be whole multiples of 12 (24px makes every icon pixel 2×2). minGap 0.4 only lets diagonal pixel contact count as a join; keep at least one empty pixel between separate parts by eye. Single pixels count as pieces, so medium detail still looks sparse."
+  },
+  "plain": {
+    "description": "neutral, even-weight line icons that sit quietly in almost any interface",
+    "styles": ["outline", "duotone", "filled"],
+    "dna": {
+      "stroke": 2, "grid": 24, "padding": 1,
+      "keylines": { "circle": 20, "square": 18, "portrait": [16, 20], "landscape": [20, 16] },
+      "corners": { "family": "circular", "radius": { "large": 2, "small": 1 }, "largeThreshold": 8 },
+      "caps": "round", "joins": "round", "angles": [0, 45, 90], "detail": "low", "minGap": 2,
+      "badge": { "position": "bottom-right", "size": 8, "gap": 2 },
+      "duotoneOpacity": 0.2
+    }
+  },
+  "soft": {
+    "description": "light strokes with wide, smooth corners: warm and polished",
+    "styles": ["outline", "duotone", "filled"],
+    "dna": {
+      "stroke": 1.5, "grid": 24, "padding": 1,
+      "keylines": { "circle": 20, "square": 18, "portrait": [16, 20], "landscape": [20, 16] },
+      "corners": { "family": "squircle", "radius": { "large": 5, "small": 2.5 }, "largeThreshold": 8 },
+      "caps": "round", "joins": "round", "angles": [0, 45, 90], "detail": "low", "minGap": 2,
+      "badge": { "position": "bottom-right", "size": 8, "gap": 2 },
+      "duotoneOpacity": 0.4
+    },
+    "notes": "Large corners eat into small shapes: below largeThreshold use the small radius, and skip rounding where three or more lines meet."
+  },
+  "crisp": {
+    "description": "thin lines, hard corners and square ends: exact and technical",
+    "styles": ["outline", "duotone", "filled"],
+    "dna": {
+      "stroke": 1.5, "grid": 24, "padding": 1,
+      "keylines": { "circle": 20, "square": 18, "portrait": [16, 20], "landscape": [20, 16] },
+      "corners": { "family": "sharp", "radius": { "large": 0, "small": 0 }, "largeThreshold": 8 },
+      "caps": "square", "joins": "miter", "angles": [0, 45, 90], "detail": "low", "minGap": 2,
+      "badge": { "position": "bottom-right", "size": 8, "gap": 2 },
+      "duotoneOpacity": 0.2
+    },
+    "notes": "Square caps reach half a stroke past each endpoint, so end lines 0.75 short of where the padding starts. Miter joins on sharp diagonals spike; keep diagonal corners at 90° or wider."
+  }
+}
